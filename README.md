@@ -186,11 +186,15 @@ https://pages.18f.gov/ and the authenticated https://pages-staging.18f.gov/.
 ### Run the `18f-pages` server
 
 After that, run the following to launch the server via
-[Forever](https://www.npmjs.com/package/forever):
+[Forever](https://www.npmjs.com/package/forever), where `/path/to/` and
+`/usr/local/bin/` are replaced with the appropriate absolute paths:
 
 ```sh
-$ forever start -l path/to/pages.log -a 18f-pages path/to/pages-config.json
+$ forever start -l /path/to/pages.log -a \
+  /usr/local/bin/18f-pages /path/to/pages-config.json
 ```
+
+You can find the absolute path to `18f-pages` by running `which 18f-pages`.
 
 ### <a name="homepage-symlink"></a>Create a symlink to the `index.html` of the generated homepage
 
