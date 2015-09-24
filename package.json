@@ -1,7 +1,7 @@
 {
   "name": "18f-pages-server",
   "version": "0.0.0",
-  "description": "Static website publishing server a la GitHub Pages",
+  "description": "Static website publishing server for 18F Pages",
   "main": "index.js",
   "bin": {
     "18f-pages": "./bin/18f-pages"
