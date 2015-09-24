@@ -27,7 +27,7 @@ stage: live
 status: active
 
 # Description of the project
-description: Static website publishing server a la GitHub Pages
+description: Static website publishing server for 18F Pages
 
 # Should be 'true' if the project has a continuous build (required)
 # values: true, false
