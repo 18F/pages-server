@@ -11,9 +11,9 @@ a Jekyll-based site.
 
 ## Reusability
 
-The server may be forked and used by other organizations, as it is completely
-configurable via the [`pages-config.json`](#pages-config) file. You may imagine
-replacing all instances of "18F" in the instructions that follow with your own
+The server may be run by other organizations, as it is completely configurable
+via the [`pages-config.json`](#pages-config) file. You may imagine replacing
+all instances of "18F" in the instructions that follow with your own
 organization's handle.
 
 ## Publishing
