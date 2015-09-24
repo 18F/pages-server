@@ -1,13 +1,12 @@
 # 18f-pages-server
 
-This is the server that publishes the static websites for
-[18F Pages](https://pages.18f.gov/). It works very similarly to
-[GitHub pages](https://pages.github.com/). It automatically publishes
-[Jekyll](http://jekyllrb.com/)-based web sites whenever updates are made to
-a publishing branch (like `gh-pages`, but where the name of the branch is
-defined by the server's configuration). It also supports publishing via
-[`rsync`](https://rsync.samba.org/) if the publishing branch does not contain
-a Jekyll-based site.
+This server publishes static websites for [18F Pages](https://pages.18f.gov/).
+It works very similarly to [GitHub pages](https://pages.github.com/). It
+automatically publishes [Jekyll](http://jekyllrb.com/)-based web sites
+whenever updates are made to a publishing branch (like `gh-pages`, but where
+the name of the branch is defined by the server's configuration). It also
+supports publishing via [`rsync`](https://rsync.samba.org/) if the publishing
+branch does not contain a Jekyll-based site.
 
 ## Reusability
 
@@ -22,8 +21,8 @@ Once the server has been set up per the
 [server installation instructions](#installation), commits to a repository's
 publishing branch (e.g. `18f-pages`) will publish the site at
 `https://PAGES_HOST/REPO_NAME`, where `PAGES_HOST` is the name of the host
-running `18f-pages-server` and `REPO_NAME` is the name of the repository minus
-the organization name.
+running `18f-pages-server` and `REPO_NAME` is the name of the repository
+without the organization prefix.
 
 For example, `18F/guides-template` will publish to
 https://pages.18f.gov/guides-template/.
@@ -57,7 +56,7 @@ http://localhost:4000/ via `jekyll serve` _and_ when published to
 ### Repository configuration
 
 In the following instructions, `18f-pages` is the name of the publishing
-branch. This name is configurable for each `builders:` entry in the
+branch. This name is configurable for each `builders` entry in the
 [`pages-config.json`](#pages-config) file.
 
 - Create the `18f-pages` publishing branch. If you already have a `gh-pages`
@@ -66,9 +65,9 @@ branch. This name is configurable for each `builders:` entry in the
 $ git checkout -b 18f-pages gh-pages
 $ git push origin 18f-pages
 ```
-- If your repo is primarily an `18f-pages-server` site (as opposed to a
-  project site with an `18f-pages` branch for documentation), you may
-  optionally set the default branch on GitHub to `18f-pages`.
+- If your repo is primarily an 18F Pages site (as opposed to a project site
+  with an `18f-pages` branch for documentation), you may optionally set the
+  default branch on GitHub to `18f-pages`.
 - Configure a [webhook](#webhook) for the repository if there isn't already
   a webhook configured for the entire GitHub organization.
 - Push a change to the `18f-pages` branch to publish your site.
@@ -78,15 +77,20 @@ $ git push origin 18f-pages
 The server currently does not detect the creation of a publishing branch (e.g.
 `18f-pages`), or the creation of a repository with a publishing branch.
 Therefore, one must push a change to a publishing branch before the site will
-appear on the serving host. It is unclear whether we will implement repository
-and publishing branch detection in the future.
+appear on the serving host. It is unclear whether we will implement detection
+of new repositories or publishing branches in the future.
 
 ### Multiple publishing branches
 
-A repository can contain more than one publishing branch. Several 18F
-repositories have both an `18f-pages` and an `18f-pages-staging` branch, with
-the idea that most changes will be applied to `18f-pages-staging`, and then
-`18f-pages-staging` will be merged into `18f-pages` for release.
+A repository can contain more than one publishing branch, with each branch
+corresponding to a `builders` item in the [`pages-config.json`
+file](#pages-config).
+
+Several 18F repositories have both an `18f-pages` and an `18f-pages-staging`
+branch, with the idea that most changes will be applied first to
+`18f-pages-staging` and published at https://pages-staging.18f.gov/. When the
+site is ready for public release, the `18f-pages-staging` branch will be
+merged into `18f-pages`, publishing the site at https://pages.18f.gov/.
 
 ### <a name="webhook"></a>Webhook configuration
 
@@ -111,14 +115,15 @@ implement automated site and repository removal in the future.
 ### <a name="generated-config"></a>Additional server-generated Jekyll configuration
 
 For Jekyll sites, the server will generate a temporary Jekyll config file with
-a name defined by the `pagesConfig:` [configuration property](#pages-config).
+a name defined by the `pagesConfig` [configuration property](#pages-config).
 For 18F Pages, this file is called `_config_18f_pages.yml`. It will define the
 following values that will override any existing values from the site's
 `_config.yml` file:
 
-* `baseurl:` - set to the name of the repository minus the organization name,
-  e.g. `/guides-template` for the `18F/guides-template` repo
-* `asset_root:` - set to the `assetRoot:` configuration property
+* **baseurl:** - set to the name of the repository without the organization
+  prefix, e.g. `/guides-template` for the `18F/guides-template` repo
+* **asset_root:** - set to the `assetRoot` [configuration
+  property](#pages-config)
 
 **In most cases, published sites should not have either of these properties
 defined in their `_config.yml` files, nor should they publish their own
@@ -133,7 +138,7 @@ will match the defined `baseurl`. In this case, `baseurl` _must_ begin with
 
 If `baseurl` is `/` or the empty string, or is not defined in the file, the
 generated output directory will match the default for any other site, which is
-the repository name minus the organization prefix. See the section on
+the repository name without the organization prefix. See the section on
 [creating a symlink to the generated homepage](#homepage-symlink) for details
 about this use case.
 
@@ -273,10 +278,10 @@ for https://pages.18f.gov/ and https://pages-staging.18f.gov/. Note how the
 values match those from the [`pages-config.json` file](./pages-config.json),
 explained in the [configuration section](#pages-config).
 
-This excerpt from the `server` block for https://pages.18f.gov/defines the
+This first excerpt from the https://pages.18f.gov/ `server` block defines the
 `https://pages.18f.gov/deploy` webhook endpoint. This endpoint proxies
 requests to the `18f-pages` server running on port 5000. Note that only one
-webhook endpoint is required, since the single server instances publishes both
+webhook endpoint is required, since the single server instance publishes both
 https://pages.18f.gov/ and https://pages-staging.18f.gov/.
 ```
 server {
@@ -306,8 +311,8 @@ server {
 }
 ```
 
-This excerpt from the https://pages.18f.gov/ `server` block corresponds to the
-first `builders` entry from [`pages-config.json`](./pages-config.json):
+This second excerpt from the https://pages.18f.gov/ `server` block corresponds
+to the first `builders` entry from [`pages-config.json`](./pages-config.json):
 ```
 server {
   listen 443 ssl spdy;
@@ -326,9 +331,10 @@ server {
 }
 ```
 
-These `server` blocks define the authenticated https://pages-staging.18f.gov/
-host. The `127.0.0.1:8080` block corresponds to the second `builders` entry
-from [`pages-config.json`](./pages-config.json). Note that this site uses the
+These final `server` blocks define the authenticated
+https://pages-staging.18f.gov/ host. The `127.0.0.1:8080` block corresponds to
+the second `builders` entry from [`pages-config.json`](./pages-config.json).
+Note that this site uses the
 [bitly/oauth2_proxy](https://github.com/18F/oauth2_proxy/) for authentication,
 which you can learn more about in the [OAuth2 Proxy section of the 18F Hub
 deployment README](https://github.com/18F/hub/tree/master/deploy#oauth2-proxy).
