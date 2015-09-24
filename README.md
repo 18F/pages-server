@@ -84,7 +84,7 @@ can be configured for an entire GitHub organization. See the
 [18F Guides Template webhook setup instructions](https://pages.18f.gov/guides-template/post-your-guide/#set-webhook)
 for an example.
 
-### <a href="generated-config"></a>Additional server-generated Jekyll configuration
+### <a name="generated-config"></a>Additional server-generated Jekyll configuration
 
 For Jekyll sites, the server will generate a temporary Jekyll config file with
 a name defined by the `pagesConfig:` [configuration property](#pages-config).
@@ -113,7 +113,7 @@ the repository name minus the organization prefix. See the section on
 [creating a symlink to the generated homepage](#homepage-symlink) for details
 about this use case.
 
-## <a href="installation"></a>Installing the `18f-pages` server
+## <a name="installation"></a>Installing the `18f-pages` server
 
 Install the following if they are not yet present on your system:
 
@@ -192,7 +192,7 @@ After that, run the following to launch the server via
 $ forever start -l path/to/pages.log -a 18f-pages path/to/pages-config.json
 ```
 
-### <a href="homepage-symlink"></a>Create a symlink to the `index.html` of the generated homepage
+### <a name="homepage-symlink"></a>Create a symlink to the `index.html` of the generated homepage
 
 Follow this example if you wish to publish the homepage of your
 `18f-pages-server` host using `18f-pages-server` as well.
