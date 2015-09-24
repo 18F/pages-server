@@ -17,7 +17,7 @@ function SiteBuilderOptions(info, config, repoDir, destDir) {
 
 function makeBuilderListener(webhook, config, builderConfig) {
   webhook.on('refs/heads/' + builderConfig.branch, function(info) {
-    siteBuilder.launchBuilder(info, new SiteBuilderOptions(info, config,
+    siteBuilder.launchBuilder(info, config, new SiteBuilderOptions(info, config,
       builderConfig.repositoryDir, builderConfig.generatedSiteDir));
   });
 }
