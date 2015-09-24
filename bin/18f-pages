@@ -1,0 +1,32 @@
+#! /usr/bin/env node
+
+var pagesServer = require('../index.js');
+var fs = require('fs');
+var option = process.argv[2];
+
+if (option === 'print-template') {
+  console.log(JSON.stringify(require('../pages-config.json'), null, 2));
+  process.exit(0);
+}
+
+var USAGE = [
+  'Usage: ' + process.argv[1] + ' [-h|print-template|pages-config.json]',
+  'Where:',
+  '  -h, --help, help    show this help',
+  '  print-template      print an example pages-config.json',
+  '  pages-config.json   path to a valid pages-config.json file',
+].join('\n');
+
+var showHelp = (option === '-h' || option === '--help' || option === 'help');
+if (showHelp) { console.log(USAGE); process.exit(0); }
+
+var invalidArgs = process.argv.length !== 3;
+if (invalidArgs) { console.error(USAGE); process.exit(1); }
+
+fs.readFile(option, 'utf8', function(err, configData) {
+  if (err) {
+    console.error('Error opening ' + option + ': ' + err);
+    process.exit(1);
+  }
+  pagesServer.LaunchServer(JSON.parse(configData));
+});
