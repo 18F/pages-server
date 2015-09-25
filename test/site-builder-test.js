@@ -391,7 +391,7 @@ describe('SiteBuilder', function() {
   });
 
   describe('makeBuilderListener and launchBuilder', function() {
-    var webhook, incomingPayload, builderConfig, cloneDir, outputDir;
+    var webhook, incomingPayload, builderConfig, cloneDir, outputDir, buildLog;
 
     before(function() {
       incomingPayload = {
@@ -415,6 +415,7 @@ describe('SiteBuilder', function() {
 
       cloneDir = path.join(testRepoDir, 'repo_dir', 'foo');
       outputDir = path.join(testRepoDir, 'dest_dir', 'foo');
+      buildLog = path.join(outputDir, 'build.log');
     });
 
     beforeEach(function(done) {
@@ -433,7 +434,7 @@ describe('SiteBuilder', function() {
 
     // The outer afterEach() will remove the testRepoDir.
     afterEach(function(done) {
-      fs.unlink(path.join(outputDir, 'build.log'), function() {
+      fs.unlink(buildLog, function() {
         fs.rmdir(outputDir, function(err) {
           if (err) { return done(err); }
           fs.rmdir(builderConfig.generatedSiteDir, function(err) {
@@ -481,6 +482,8 @@ describe('SiteBuilder', function() {
           ['foo: build successful']
         ]);
         expect(errorMsgs).to.be.empty;
+        var expectedLog = logMsgs.join('\n') + '\n';
+        expect(fs.readFileSync(buildLog, 'utf8')).to.equal(expectedLog);
       });
 
       siteBuilder.makeBuilderListener(webhook, builderConfig, checkResult);
@@ -510,6 +513,8 @@ describe('SiteBuilder', function() {
            'git clone git@github.com:18F/foo.git --branch 18f-pages'],
           ['foo: build failed']
         ]);
+        var expectedLog = logMsgs.concat(errorMsgs).join('\n') + '\n';
+        expect(fs.readFileSync(buildLog, 'utf8')).to.equal(expectedLog);
       });
 
       siteBuilder.makeBuilderListener(webhook, builderConfig, checkResult);
