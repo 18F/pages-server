@@ -6,6 +6,7 @@
 var hookshot = require('hookshot');
 var path = require('path');
 var siteBuilder = require('./lib/site-builder');
+var packageInfo = require('./package.json');
 
 var exports = module.exports = {};
 
@@ -14,6 +15,10 @@ function makeBuilderListener(webhook, builderConfig) {
     siteBuilder.launchBuilder(info, builderConfig.repositoryDir,
       builderConfig.generatedSiteDir);
   });
+}
+
+exports.versionString = function() {
+  return packageInfo.name + ' v' + packageInfo.version;
 }
 
 exports.LaunchServer = function(config) {
@@ -29,6 +34,7 @@ exports.LaunchServer = function(config) {
     makeBuilderListener(webhook, config.builders[i]);
   }
 
+  console.log(exports.versionString());
   webhook.listen(config.port);
   console.log(config.githubOrg + ' pages: listening on port ' + config.port);
 };
