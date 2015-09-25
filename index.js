@@ -9,16 +9,10 @@ var siteBuilder = require('./lib/site-builder');
 
 var exports = module.exports = {};
 
-function SiteBuilderOptions(info, config, repoDir, destDir) {
-  return new siteBuilder.Options(info, path.join(config.home, repoDir),
-    path.join(config.home, destDir), config.git, config.bundler, config.jekyll,
-    config.rsync, config.rsyncOpts);
-}
-
-function makeBuilderListener(webhook, config, builderConfig) {
+function makeBuilderListener(webhook, builderConfig) {
   webhook.on('refs/heads/' + builderConfig.branch, function(info) {
-    siteBuilder.launchBuilder(info, config, new SiteBuilderOptions(info, config,
-      builderConfig.repositoryDir, builderConfig.generatedSiteDir));
+    siteBuilder.launchBuilder(info, builderConfig.repositoryDir,
+      builderConfig.generatedSiteDir);
   });
 }
 
@@ -32,7 +26,7 @@ exports.LaunchServer = function(config) {
 
   var numBuilders = config.builders.length;
   for (var i = 0; i != numBuilders; i++) {
-    makeBuilderListener(webhook, config, config.builders[i]);
+    makeBuilderListener(webhook, config.builders[i]);
   }
 
   webhook.listen(config.port);

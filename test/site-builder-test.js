@@ -15,6 +15,11 @@ var buildLogger = require('../lib/build-logger');
 var fileLockedOperation = require('file-locked-operation');
 
 var config = require('../pages-config.json');
+config.home = '';
+config.git = 'git';
+config.bundler = 'bundle';
+config.jekyll = 'jekyll';
+config.rsync = 'rsync';
 
 var expect = chai.expect;
 chai.should();
@@ -108,9 +113,7 @@ describe('SiteBuilder', function() {
       },
       ref: 'refs/heads/18f-pages'
     };
-    var opts = new siteBuilder.Options(info, 'repo_dir', 'dest_dir',
-      'git', 'bundle', 'jekyll', 'rsync',
-      ['-vaxp', '--delete', '--ignore-errors']);
+    var opts = new siteBuilder.Options(info, 'repo_dir', 'dest_dir');
     opts.sitePath = sitePath;
     return new siteBuilder.SiteBuilder(opts, logger, updateLock, done);
   };
