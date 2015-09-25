@@ -10,13 +10,6 @@ var packageInfo = require('./package.json');
 
 var exports = module.exports = {};
 
-function makeBuilderListener(webhook, builderConfig) {
-  webhook.on('refs/heads/' + builderConfig.branch, function(info) {
-    siteBuilder.launchBuilder(info, builderConfig.repositoryDir,
-      builderConfig.generatedSiteDir);
-  });
-}
-
 exports.versionString = function() {
   return packageInfo.name + ' v' + packageInfo.version;
 }
@@ -31,7 +24,7 @@ exports.LaunchServer = function(config) {
 
   var numBuilders = config.builders.length;
   for (var i = 0; i != numBuilders; i++) {
-    makeBuilderListener(webhook, config.builders[i]);
+    siteBuilder.makeBuilderListener(webhook, config.builders[i]);
   }
 
   console.log(exports.versionString());
