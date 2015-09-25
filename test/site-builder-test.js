@@ -389,4 +389,134 @@ describe('SiteBuilder', function() {
         });
     });
   });
+
+  describe('makeBuilderListener and launchBuilder', function() {
+    var webhook, incomingPayload, builderConfig, cloneDir, outputDir;
+
+    before(function() {
+      incomingPayload = {
+        'ref': 'refs/heads/18f-pages',
+        'repository': { 'name': 'foo', 'full_name': '18F/foo' },
+        'head_commit': {
+          'id': 'deadbeef',
+          'message': 'Build me',
+          'timestamp': '2015-09-25',
+          'committer': { 'email': 'michael.bland@gsa.gov' }
+        },
+        'pusher': { 'name': 'Mike Bland', 'email': 'michael.bland@gsa.gov' },
+        'sender': { 'login': 'mbland' }
+      };
+
+      builderConfig = {
+        'branch': '18f-pages',
+        'repositoryDir': path.join(testRepoDir, 'repo_dir'),
+        'generatedSiteDir': path.join(testRepoDir, 'dest_dir')
+      };
+
+      cloneDir = path.join(testRepoDir, 'repo_dir', 'foo');
+      outputDir = path.join(testRepoDir, 'dest_dir', 'foo');
+    });
+
+    beforeEach(function(done) {
+      webhook = { on: sinon.spy() };
+      fs.mkdir(testRepoDir, function(err) {
+        if (err) { return done(err); }
+        fs.mkdir(builderConfig.repositoryDir, function(err) {
+          if (err) { return done(err); }
+          fs.mkdir(builderConfig.generatedSiteDir, function(err) {
+            if (err) { return done(err); }
+            fs.mkdir(outputDir, done);
+          });
+        });
+      });
+    });
+
+    // The outer afterEach() will remove the testRepoDir.
+    afterEach(function(done) {
+      fs.unlink(path.join(outputDir, 'build.log'), function() {
+        fs.rmdir(outputDir, function(err) {
+          if (err) { return done(err); }
+          fs.rmdir(builderConfig.generatedSiteDir, function(err) {
+            if (err) { return done(err); }
+            fs.rmdir(builderConfig.repositoryDir, done);
+          });
+        });
+      });
+    });
+
+    var captureLogs = function() {
+      sinon.stub(console, 'log').returns(null);
+      sinon.stub(console, 'error').returns(null);
+    };
+
+    var restoreLogs = function() {
+      console.error.restore();
+      console.log.restore();
+    };
+
+    it('should create a function to launch a builder', function() {
+      siteBuilder.makeBuilderListener(webhook, builderConfig);
+      expect(webhook.on.calledOnce).to.be.true;
+      var args = webhook.on.args[0];
+      expect(args.length).to.equal(2);
+      expect(args[0]).to.equal('refs/heads/18f-pages');
+      var launchBuilder = args[1];
+      expect(launchBuilder).to.be.a.Function;
+    });
+
+    it('should create a builder that builds the site', function(done) {
+      var checkResult = check(done, function(err) {
+        var logMsgs = console.log.args;
+        var errorMsgs = console.error.args;
+        restoreLogs();
+        expect(err).to.be.undefined;
+        expect(logMsgs).to.eql([
+          ['18F/foo: starting build at commit deadbeef'],
+          ['description: Build me'],
+          ['timestamp: 2015-09-25'],
+          ['committer: michael.bland@gsa.gov'],
+          ['pusher: Mike Bland michael.bland@gsa.gov'],
+          ['sender: mbland'],
+          ['cloning foo into ' + cloneDir],
+          ['foo: build successful']
+        ]);
+        expect(errorMsgs).to.be.empty;
+      });
+
+      siteBuilder.makeBuilderListener(webhook, builderConfig, checkResult);
+      var launchBuilder = webhook.on.args[0][1];
+      mySpawn.setDefault(mySpawn.simple(0));
+      captureLogs();
+      launchBuilder(incomingPayload);
+    });
+
+    it('should create a builder that fails to build the site', function(done) {
+      var checkResult = check(done, function(err) {
+        var logMsgs = console.log.args;
+        var errorMsgs = console.error.args;
+        restoreLogs();
+        expect(err).to.be.undefined;
+        expect(logMsgs).to.eql([
+          ['18F/foo: starting build at commit deadbeef'],
+          ['description: Build me'],
+          ['timestamp: 2015-09-25'],
+          ['committer: michael.bland@gsa.gov'],
+          ['pusher: Mike Bland michael.bland@gsa.gov'],
+          ['sender: mbland'],
+          ['cloning foo into ' + cloneDir],
+        ]);
+        expect(errorMsgs).to.eql([
+          ['Error: failed to clone foo with exit code 1 from command: ' +
+           'git clone git@github.com:18F/foo.git --branch 18f-pages'],
+          ['foo: build failed']
+        ]);
+      });
+
+      siteBuilder.makeBuilderListener(webhook, builderConfig, checkResult);
+      var launchBuilder = webhook.on.args[0][1];
+      mySpawn.setDefault(mySpawn.simple(1));
+      captureLogs();
+      launchBuilder(incomingPayload);
+    });
+  });
 });
