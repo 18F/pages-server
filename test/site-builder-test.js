@@ -14,6 +14,8 @@ var siteBuilder = require('../lib/site-builder');
 var buildLogger = require('../lib/build-logger');
 var fileLockedOperation = require('file-locked-operation');
 
+var config = require('../pages-config.json');
+
 var expect = chai.expect;
 chai.should();
 chai.use(chaiAsPromised);
@@ -24,10 +26,10 @@ describe('SiteBuilder', function() {
   var testRepoDir, fileToDelete, gemfile, pagesConfig, configYml;
 
   before(function(done) {
-    siteBuilder.setConfiguration(require('../pages-config.json'));
+    siteBuilder.setConfiguration(config);
     testRepoDir = path.resolve(__dirname, 'site_builder_test');
     gemfile = path.resolve(testRepoDir, 'Gemfile');
-    pagesConfig = path.resolve(testRepoDir, siteBuilder.PAGES_CONFIG);
+    pagesConfig = path.resolve(testRepoDir, config.pagesConfig);
     configYml = path.resolve(testRepoDir, '_config.yml');
     lockDir = path.resolve(__dirname, 'site_builder_test_lock_dir');
     lockfilePath = path.resolve(lockDir, '.update-lock-repo_name');
@@ -117,9 +119,9 @@ describe('SiteBuilder', function() {
     // Note the builder.done callback wrapper will remove the generated config.
     builder = makeBuilder(testRepoDir, function() {});
     logMock.expects('log').withExactArgs(
-      'generating', siteBuilder.PAGES_CONFIG);
+      'generating', config.pagesConfig);
     logMock.expects('log').withExactArgs(
-      'removing generated', siteBuilder.PAGES_CONFIG);
+      'removing generated', config.pagesConfig);
 
     var inRepoDir = new Promise(function(resolve, reject) {
       createRepoDir(function(err) {
@@ -143,7 +145,7 @@ describe('SiteBuilder', function() {
 
     var checkResults = function(content) {
       expect(content).to.equal('baseurl: /repo_name\n' +
-        'asset_root: ' + siteBuilder.ASSET_ROOT + '\n');
+        'asset_root: ' + config.assetRoot + '\n');
       builder.done();
       logMock.verify();
     };
@@ -207,9 +209,9 @@ describe('SiteBuilder', function() {
     logMock.expects('log').withExactArgs(
       'cloning', 'repo_name', 'into', testRepoDir);
     logMock.expects('log').withExactArgs(
-      'generating', siteBuilder.PAGES_CONFIG);
+      'generating', config.pagesConfig);
     logMock.expects('log').withExactArgs(
-      'removing generated', siteBuilder.PAGES_CONFIG);
+      'removing generated', config.pagesConfig);
     builder = makeBuilder(testRepoDir, check(done, function(err) {
       expect(err).to.be.undefined;
       expect(spawnCalls()).to.eql([
@@ -241,9 +243,9 @@ describe('SiteBuilder', function() {
     mySpawn.setDefault(mySpawn.simple(0));
     logMock.expects('log').withExactArgs('syncing repo:', 'repo_name');
     logMock.expects('log').withExactArgs(
-      'generating', siteBuilder.PAGES_CONFIG);
+      'generating', config.pagesConfig);
     logMock.expects('log').withExactArgs(
-      'removing generated', siteBuilder.PAGES_CONFIG);
+      'removing generated', config.pagesConfig);
     createRepoDir(function() {
       builder = makeBuilder(testRepoDir, check(done, function(err) {
         expect(err).to.be.undefined;
@@ -263,9 +265,9 @@ describe('SiteBuilder', function() {
     mySpawn.setDefault(mySpawn.simple(0));
     logMock.expects('log').withExactArgs('syncing repo:', 'repo_name');
     logMock.expects('log').withExactArgs(
-      'generating', siteBuilder.PAGES_CONFIG);
+      'generating', config.pagesConfig);
     logMock.expects('log').withExactArgs(
-      'removing generated', siteBuilder.PAGES_CONFIG);
+      'removing generated', config.pagesConfig);
     createRepoWithFile(gemfile, '', function() {
       builder = makeBuilder(testRepoDir, check(done, function(err) {
         expect(err).to.be.undefined;
@@ -307,9 +309,9 @@ describe('SiteBuilder', function() {
     mySpawn.sequence.add(mySpawn.simple(1));
     logMock.expects('log').withExactArgs('syncing repo:', 'repo_name');
     logMock.expects('log').withExactArgs(
-      'generating', siteBuilder.PAGES_CONFIG);
+      'generating', config.pagesConfig);
     logMock.expects('log').withExactArgs(
-      'removing generated', siteBuilder.PAGES_CONFIG);
+      'removing generated', config.pagesConfig);
     createRepoWithFile(gemfile, '', function() {
       builder = makeBuilder(testRepoDir, check(done, function(err) {
         var jekyllBuildCommand =
@@ -329,7 +331,7 @@ describe('SiteBuilder', function() {
     mySpawn.setDefault(mySpawn.simple(0));
     logMock.expects('log').withExactArgs('syncing repo:', 'repo_name');
     logMock.expects('log').withExactArgs(
-      'using existing', siteBuilder.PAGES_CONFIG);
+      'using existing', config.pagesConfig);
     createRepoWithFile(pagesConfig, '', function() {
       builder = makeBuilder(testRepoDir, check(done, function(err) {
         expect(err).to.be.undefined;
@@ -349,7 +351,7 @@ describe('SiteBuilder', function() {
     mySpawn.setDefault(mySpawn.simple(0));
     logMock.expects('log').withExactArgs('syncing repo:', 'repo_name');
     logMock.expects('log').withExactArgs(
-      'using existing', siteBuilder.PAGES_CONFIG);
+      'using existing', config.pagesConfig);
     createRepoWithFile(pagesConfig, 'baseurl:  /new-destination  ', function() {
       builder = makeBuilder(testRepoDir, check(done, function(err) {
         expect(err).to.be.undefined;
