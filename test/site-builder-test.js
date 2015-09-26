@@ -113,7 +113,14 @@ describe('SiteBuilder', function() {
       },
       ref: 'refs/heads/18f-pages'
     };
-    var opts = new siteBuilder.Options(info, 'repo_dir', 'dest_dir');
+
+    var builderConfig = {
+        'branch': '18f-pages',
+        'repositoryDir': 'repo_dir',
+        'generatedSiteDir': 'dest_dir'
+    };
+
+    var opts = new siteBuilder.Options(info, builderConfig);
     opts.sitePath = sitePath;
     return new siteBuilder.SiteBuilder(opts, logger, updateLock);
   };
