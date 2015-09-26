@@ -106,7 +106,7 @@ describe('SiteBuilder', function() {
     createRepoDir(function() { fs.writeFile(filename, contents, done); });
   };
 
-  var makeBuilder = function(sitePath) {
+  var makeBuilder = function() {
     var info = {
       repository: {
         name: 'repo_name'
@@ -121,12 +121,12 @@ describe('SiteBuilder', function() {
     };
 
     var opts = new siteBuilder.Options(info, builderConfig);
-    opts.sitePath = sitePath;
+    opts.sitePath = testRepoDir;
     return new siteBuilder.SiteBuilder(opts, logger, updateLock);
   };
 
   it('should write the expected configuration', function(done) {
-    builder = makeBuilder(testRepoDir);
+    builder = makeBuilder();
     logMock.expects('log').withExactArgs(
       'generating', config.pagesConfig);
     logMock.expects('log').withExactArgs(
@@ -174,7 +174,7 @@ describe('SiteBuilder', function() {
   // directory already.
   describe('_parseDestinationFromConfigData', function() {
     beforeEach(function() {
-      builder = makeBuilder(testRepoDir);
+      builder = makeBuilder();
     });
 
     it('should keep the default destination if undefined', function() {
@@ -226,7 +226,7 @@ describe('SiteBuilder', function() {
       'generating', config.pagesConfig);
     logMock.expects('log').withExactArgs(
       'removing generated', config.pagesConfig);
-    makeBuilder(testRepoDir).build(check(done, function(err) {
+    makeBuilder().build(check(done, function(err) {
       expect(err).to.be.undefined;
       expect(spawnCalls()).to.eql([
         'git clone git@github.com:18F/repo_name.git --branch 18f-pages',
@@ -241,7 +241,7 @@ describe('SiteBuilder', function() {
     mySpawn.sequence.add(mySpawn.simple(1));
     logMock.expects('log').withExactArgs(
       'cloning', 'repo_name', 'into', testRepoDir);
-    makeBuilder(testRepoDir).build(check(done, function(err) {
+    makeBuilder().build(check(done, function(err) {
       var cloneCommand = 
         'git clone git@github.com:18F/repo_name.git --branch 18f-pages';
       expect(err).to.equal('Error: failed to clone repo_name with ' +
@@ -259,7 +259,7 @@ describe('SiteBuilder', function() {
     logMock.expects('log').withExactArgs(
       'removing generated', config.pagesConfig);
     createRepoDir(function() {
-      makeBuilder(testRepoDir).build(check(done, function(err) {
+      makeBuilder().build(check(done, function(err) {
         expect(err).to.be.undefined;
         expect(spawnCalls()).to.eql([
           'git stash',
@@ -280,7 +280,7 @@ describe('SiteBuilder', function() {
     logMock.expects('log').withExactArgs(
       'removing generated', config.pagesConfig);
     createRepoWithFile(gemfile, '', function() {
-      makeBuilder(testRepoDir).build(check(done, function(err) {
+      makeBuilder().build(check(done, function(err) {
         expect(err).to.be.undefined;
         expect(spawnCalls()).to.eql([
           'git stash',
@@ -300,7 +300,7 @@ describe('SiteBuilder', function() {
     mySpawn.sequence.add(mySpawn.simple(1));
     logMock.expects('log').withExactArgs('syncing repo:', 'repo_name');
     createRepoWithFile(gemfile, '', function() {
-      makeBuilder(testRepoDir).build(check(done, function(err) {
+      makeBuilder().build(check(done, function(err) {
         var bundleInstallCommand = 'bundle install';
         expect(err).to.equal('Error: rebuild failed for repo_name with ' +
           'exit code 1 from command: ' + bundleInstallCommand);
@@ -322,7 +322,7 @@ describe('SiteBuilder', function() {
     logMock.expects('log').withExactArgs(
       'removing generated', config.pagesConfig);
     createRepoWithFile(gemfile, '', function() {
-      makeBuilder(testRepoDir).build(check(done, function(err) {
+      makeBuilder().build(check(done, function(err) {
         var jekyllBuildCommand =
           'bundle exec jekyll build --trace --destination dest_dir/repo_name ' +
             '--config _config.yml,_config_18f_pages.yml';
@@ -341,7 +341,7 @@ describe('SiteBuilder', function() {
     logMock.expects('log').withExactArgs(
       'using existing', config.pagesConfig);
     createRepoWithFile(pagesConfig, '', function() {
-      makeBuilder(testRepoDir).build(check(done, function(err) {
+      makeBuilder().build(check(done, function(err) {
         expect(err).to.be.undefined;
         expect(spawnCalls()).to.eql([
           'git stash',
@@ -360,7 +360,7 @@ describe('SiteBuilder', function() {
     logMock.expects('log').withExactArgs(
       'using existing', config.pagesConfig);
     createRepoWithFile(pagesConfig, 'baseurl:  /new-destination  ', function() {
-      makeBuilder(testRepoDir).build(check(done, function(err) {
+      makeBuilder().build(check(done, function(err) {
         expect(err).to.be.undefined;
         expect(spawnCalls()).to.eql([
           'git stash',
@@ -379,7 +379,7 @@ describe('SiteBuilder', function() {
     createRepoWithFile(pagesConfig, '', function() {
       removeFile(configYml)
         .then(function() {
-          makeBuilder(testRepoDir).build(check(done, function(err) {
+          makeBuilder().build(check(done, function(err) {
             expect(err).to.be.undefined;
             expect(spawnCalls()).to.eql([
               'git stash',
