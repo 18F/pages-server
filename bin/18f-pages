@@ -38,5 +38,5 @@ fs.readFile(option, 'utf8', function(err, configData) {
     console.error(USAGE);
     process.exit(1);
   }
-  pagesServer.LaunchServer(JSON.parse(configData));
+  pagesServer.launchServer(JSON.parse(configData));
 });
