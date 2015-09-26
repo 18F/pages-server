@@ -6,20 +6,12 @@
 var hookshot = require('hookshot');
 var path = require('path');
 var siteBuilder = require('./lib/site-builder');
+var packageInfo = require('./package.json');
 
 var exports = module.exports = {};
 
-function SiteBuilderOptions(info, config, repoDir, destDir) {
-  return new siteBuilder.Options(info, path.join(config.home, repoDir),
-    path.join(config.home, destDir), config.git, config.bundler, config.jekyll,
-    config.rsync, config.rsyncOpts);
-}
-
-function makeBuilderListener(webhook, config, builderConfig) {
-  webhook.on('refs/heads/' + builderConfig.branch, function(info) {
-    siteBuilder.launchBuilder(info, config, new SiteBuilderOptions(info, config,
-      builderConfig.repositoryDir, builderConfig.generatedSiteDir));
-  });
+exports.versionString = function() {
+  return packageInfo.name + ' v' + packageInfo.version;
 }
 
 exports.LaunchServer = function(config) {
@@ -32,9 +24,10 @@ exports.LaunchServer = function(config) {
 
   var numBuilders = config.builders.length;
   for (var i = 0; i != numBuilders; i++) {
-    makeBuilderListener(webhook, config, config.builders[i]);
+    siteBuilder.makeBuilderListener(webhook, config.builders[i]);
   }
 
+  console.log(exports.versionString());
   webhook.listen(config.port);
   console.log(config.githubOrg + ' pages: listening on port ' + config.port);
 };
