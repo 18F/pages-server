@@ -456,7 +456,11 @@ describe('SiteBuilder', function() {
     before(function() {
       incomingPayload = {
         'ref': 'refs/heads/18f-pages',
-        'repository': { 'name': 'foo', 'full_name': '18F/foo' },
+        'repository': {
+          'name': 'foo',
+          'full_name': '18F/foo',
+          'organization': '18F'
+        },
         'head_commit': {
           'id': 'deadbeef',
           'message': 'Build me',
@@ -521,8 +525,8 @@ describe('SiteBuilder', function() {
       var args = webhook.on.args[0];
       expect(args.length).to.equal(2);
       expect(args[0]).to.equal('refs/heads/18f-pages');
-      var launchBuilder = args[1];
-      expect(launchBuilder).to.be.a.Function;
+      var launcher = args[1];
+      expect(launcher).to.be.a.Function;
     });
 
     it('should create a builder that builds the site', function(done) {
@@ -547,10 +551,10 @@ describe('SiteBuilder', function() {
       });
 
       siteBuilder.makeBuilderListener(webhook, builderConfig, checkResult);
-      var launchBuilder = webhook.on.args[0][1];
+      var launcher = webhook.on.args[0][1];
       mySpawn.setDefault(mySpawn.simple(0));
       captureLogs();
-      launchBuilder(incomingPayload);
+      launcher(incomingPayload);
     });
 
     it('should create a builder that fails to build the site', function(done) {
@@ -578,10 +582,22 @@ describe('SiteBuilder', function() {
       });
 
       siteBuilder.makeBuilderListener(webhook, builderConfig, checkResult);
-      var launchBuilder = webhook.on.args[0][1];
+      var launcher = webhook.on.args[0][1];
       mySpawn.setDefault(mySpawn.simple(1));
       captureLogs();
-      launchBuilder(incomingPayload);
+      launcher(incomingPayload);
+    });
+
+    it('should ignore payloads from other organizations', function() {
+      siteBuilder.makeBuilderListener(webhook, builderConfig);
+      var launcher = webhook.on.args[0][1];
+      sinon.spy(siteBuilder, 'launchBuilder');
+      var internalLauncher = siteBuilder.launchBuilder;
+
+      incomingPayload.repository.organization = 'not18F';
+      launcher(incomingPayload);
+      siteBuilder.launchBuilder.restore();
+      expect(internalLauncher.called).to.be.false;
     });
   });
 });
