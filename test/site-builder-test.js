@@ -377,7 +377,8 @@ describe('SiteBuilder', function() {
             expect(spawnCalls()).to.eql([
               'git stash',
               'git pull',
-              'rsync -vaxp --delete --ignore-errors ./ dest_dir/repo_name',
+              'rsync -vaxp --delete --ignore-errors --exclude=.[A-Za-z0-9]* ' +
+                './ dest_dir/repo_name',
             ]);
             logMock.verify();
           }));
