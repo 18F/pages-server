@@ -70,7 +70,6 @@ describe('BuildLogger', function() {
 
   it ('should fail if the file cannot be written to', function(done) {
     logger = makeLogger(checkN(2, done, function() {
-      var expectedError = 'Error: EACCES, open \'' + logFilePath + '\'';
       // I expected the following to succeed, since the failing call happens
       // after the successful call:
       //
@@ -87,9 +86,8 @@ describe('BuildLogger', function() {
       expect(console.log.args[1].join(' '))
         .to.equal('This should not be logged to the file');
       expect(console.error.called).to.be.true;
-      expect(console.error.args[0].join(' '))
-        .to.equal('Error: failed to append to log file ' + logFilePath +
-          ': ' + expectedError);
+      expect(console.error.args[0].join(' ')).to.match(
+        /^Error: failed to append to log file .*: Error: EACCES/);
     }));
 
     captureLogs();
