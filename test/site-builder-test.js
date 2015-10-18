@@ -106,20 +106,84 @@ describe('SiteBuilder', function() {
     createRepoDir(function() { fs.writeFile(filename, contents, done); });
   };
 
-  var makeBuilder = function(sitePath) {
+  var makeBuilder = function() {
     var info = {
       repository: {
         name: 'repo_name'
       },
       ref: 'refs/heads/18f-pages'
     };
-    var opts = new siteBuilder.Options(info, 'repo_dir', 'dest_dir');
-    opts.sitePath = sitePath;
+
+    var builderConfig = {
+      'branch': '18f-pages',
+      'repositoryDir': 'repo_dir',
+      'generatedSiteDir': 'dest_dir'
+    };
+
+    var opts = new siteBuilder.Options(info, builderConfig);
+    opts.sitePath = testRepoDir;
     return new siteBuilder.SiteBuilder(opts, logger, updateLock);
   };
 
+  describe('Options', function() {
+    it('should use top-level configuration defaults', function() {
+      var info = {
+        repository: {
+          name: 'repo_name'
+        },
+        ref: 'refs/heads/18f-pages'
+      };
+
+      var builderConfig = {
+        'branch': '18f-pages',
+        'repositoryDir': 'repo_dir',
+        'generatedSiteDir': 'dest_dir'
+      };
+
+      var opts = new siteBuilder.Options(info, builderConfig);
+      builder = new siteBuilder.SiteBuilder(opts, logger, updateLock);
+      expect(builder.opts.repoDir).to.equal('repo_dir');
+      expect(builder.opts.repoName).to.equal('repo_name');
+      expect(builder.opts.sitePath).to.equal('repo_dir/repo_name');
+      expect(builder.opts.branch).to.equal('18f-pages');
+      expect(builder.opts.destDir).to.equal('dest_dir');
+      expect(builder.opts.githubOrg).to.equal('18F');
+      expect(builder.opts.pagesConfig).to.equal('_config_18f_pages.yml');
+      expect(builder.opts.assetRoot).to.equal('/guides-template');
+    });
+
+    it('should override top-level defaults if builder-defined', function() {
+      var info = {
+        repository: {
+          name: 'repo_name'
+        },
+        ref: 'refs/heads/foobar-pages'
+      };
+
+      var builderConfig = {
+        'githubOrg': 'foobar',
+        'pagesConfig': '_config_foobar_pages.yml',
+        'branch': 'foobar-pages',
+        'repositoryDir': 'repo_dir',
+        'generatedSiteDir': 'dest_dir',
+        'assetRoot': '/foobar-template'
+      };
+
+      var opts = new siteBuilder.Options(info, builderConfig);
+      builder = new siteBuilder.SiteBuilder(opts, logger, updateLock);
+      expect(builder.opts.repoDir).to.equal('repo_dir');
+      expect(builder.opts.repoName).to.equal('repo_name');
+      expect(builder.opts.sitePath).to.equal('repo_dir/repo_name');
+      expect(builder.opts.branch).to.equal('foobar-pages');
+      expect(builder.opts.destDir).to.equal('dest_dir');
+      expect(builder.opts.githubOrg).to.equal('foobar');
+      expect(builder.opts.pagesConfig).to.equal('_config_foobar_pages.yml');
+      expect(builder.opts.assetRoot).to.equal('/foobar-template');
+    });
+  });
+
   it('should write the expected configuration', function(done) {
-    builder = makeBuilder(testRepoDir);
+    builder = makeBuilder();
     logMock.expects('log').withExactArgs(
       'generating', config.pagesConfig);
     logMock.expects('log').withExactArgs(
@@ -167,7 +231,7 @@ describe('SiteBuilder', function() {
   // directory already.
   describe('_parseDestinationFromConfigData', function() {
     beforeEach(function() {
-      builder = makeBuilder(testRepoDir);
+      builder = makeBuilder();
     });
 
     it('should keep the default destination if undefined', function() {
@@ -219,7 +283,7 @@ describe('SiteBuilder', function() {
       'generating', config.pagesConfig);
     logMock.expects('log').withExactArgs(
       'removing generated', config.pagesConfig);
-    makeBuilder(testRepoDir).build(check(done, function(err) {
+    makeBuilder().build(check(done, function(err) {
       expect(err).to.be.undefined;
       expect(spawnCalls()).to.eql([
         'git clone git@github.com:18F/repo_name.git --branch 18f-pages',
@@ -234,7 +298,7 @@ describe('SiteBuilder', function() {
     mySpawn.sequence.add(mySpawn.simple(1));
     logMock.expects('log').withExactArgs(
       'cloning', 'repo_name', 'into', testRepoDir);
-    makeBuilder(testRepoDir).build(check(done, function(err) {
+    makeBuilder().build(check(done, function(err) {
       var cloneCommand = 
         'git clone git@github.com:18F/repo_name.git --branch 18f-pages';
       expect(err).to.equal('Error: failed to clone repo_name with ' +
@@ -252,7 +316,7 @@ describe('SiteBuilder', function() {
     logMock.expects('log').withExactArgs(
       'removing generated', config.pagesConfig);
     createRepoDir(function() {
-      makeBuilder(testRepoDir).build(check(done, function(err) {
+      makeBuilder().build(check(done, function(err) {
         expect(err).to.be.undefined;
         expect(spawnCalls()).to.eql([
           'git stash',
@@ -273,7 +337,7 @@ describe('SiteBuilder', function() {
     logMock.expects('log').withExactArgs(
       'removing generated', config.pagesConfig);
     createRepoWithFile(gemfile, '', function() {
-      makeBuilder(testRepoDir).build(check(done, function(err) {
+      makeBuilder().build(check(done, function(err) {
         expect(err).to.be.undefined;
         expect(spawnCalls()).to.eql([
           'git stash',
@@ -293,7 +357,7 @@ describe('SiteBuilder', function() {
     mySpawn.sequence.add(mySpawn.simple(1));
     logMock.expects('log').withExactArgs('syncing repo:', 'repo_name');
     createRepoWithFile(gemfile, '', function() {
-      makeBuilder(testRepoDir).build(check(done, function(err) {
+      makeBuilder().build(check(done, function(err) {
         var bundleInstallCommand = 'bundle install';
         expect(err).to.equal('Error: rebuild failed for repo_name with ' +
           'exit code 1 from command: ' + bundleInstallCommand);
@@ -315,7 +379,7 @@ describe('SiteBuilder', function() {
     logMock.expects('log').withExactArgs(
       'removing generated', config.pagesConfig);
     createRepoWithFile(gemfile, '', function() {
-      makeBuilder(testRepoDir).build(check(done, function(err) {
+      makeBuilder().build(check(done, function(err) {
         var jekyllBuildCommand =
           'bundle exec jekyll build --trace --destination dest_dir/repo_name ' +
             '--config _config.yml,_config_18f_pages.yml';
@@ -334,7 +398,7 @@ describe('SiteBuilder', function() {
     logMock.expects('log').withExactArgs(
       'using existing', config.pagesConfig);
     createRepoWithFile(pagesConfig, '', function() {
-      makeBuilder(testRepoDir).build(check(done, function(err) {
+      makeBuilder().build(check(done, function(err) {
         expect(err).to.be.undefined;
         expect(spawnCalls()).to.eql([
           'git stash',
@@ -353,7 +417,7 @@ describe('SiteBuilder', function() {
     logMock.expects('log').withExactArgs(
       'using existing', config.pagesConfig);
     createRepoWithFile(pagesConfig, 'baseurl:  /new-destination  ', function() {
-      makeBuilder(testRepoDir).build(check(done, function(err) {
+      makeBuilder().build(check(done, function(err) {
         expect(err).to.be.undefined;
         expect(spawnCalls()).to.eql([
           'git stash',
@@ -372,7 +436,7 @@ describe('SiteBuilder', function() {
     createRepoWithFile(pagesConfig, '', function() {
       removeFile(configYml)
         .then(function() {
-          makeBuilder(testRepoDir).build(check(done, function(err) {
+          makeBuilder().build(check(done, function(err) {
             expect(err).to.be.undefined;
             expect(spawnCalls()).to.eql([
               'git stash',
@@ -392,7 +456,11 @@ describe('SiteBuilder', function() {
     before(function() {
       incomingPayload = {
         'ref': 'refs/heads/18f-pages',
-        'repository': { 'name': 'foo', 'full_name': '18F/foo' },
+        'repository': {
+          'name': 'foo',
+          'full_name': '18F/foo',
+          'organization': '18F'
+        },
         'head_commit': {
           'id': 'deadbeef',
           'message': 'Build me',
@@ -457,8 +525,8 @@ describe('SiteBuilder', function() {
       var args = webhook.on.args[0];
       expect(args.length).to.equal(2);
       expect(args[0]).to.equal('refs/heads/18f-pages');
-      var launchBuilder = args[1];
-      expect(launchBuilder).to.be.a.Function;
+      var launcher = args[1];
+      expect(launcher).to.be.a.Function;
     });
 
     it('should create a builder that builds the site', function(done) {
@@ -483,10 +551,10 @@ describe('SiteBuilder', function() {
       });
 
       siteBuilder.makeBuilderListener(webhook, builderConfig, checkResult);
-      var launchBuilder = webhook.on.args[0][1];
+      var launcher = webhook.on.args[0][1];
       mySpawn.setDefault(mySpawn.simple(0));
       captureLogs();
-      launchBuilder(incomingPayload);
+      launcher(incomingPayload);
     });
 
     it('should create a builder that fails to build the site', function(done) {
@@ -514,10 +582,22 @@ describe('SiteBuilder', function() {
       });
 
       siteBuilder.makeBuilderListener(webhook, builderConfig, checkResult);
-      var launchBuilder = webhook.on.args[0][1];
+      var launcher = webhook.on.args[0][1];
       mySpawn.setDefault(mySpawn.simple(1));
       captureLogs();
-      launchBuilder(incomingPayload);
+      launcher(incomingPayload);
+    });
+
+    it('should ignore payloads from other organizations', function() {
+      siteBuilder.makeBuilderListener(webhook, builderConfig);
+      var launcher = webhook.on.args[0][1];
+      sinon.spy(siteBuilder, 'launchBuilder');
+      var internalLauncher = siteBuilder.launchBuilder;
+
+      incomingPayload.repository.organization = 'not18F';
+      launcher(incomingPayload);
+      siteBuilder.launchBuilder.restore();
+      expect(internalLauncher.called).to.be.false;
     });
   });
 });
