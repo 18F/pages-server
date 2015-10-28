@@ -14,7 +14,7 @@ exports.versionString = function() {
   return packageInfo.name + ' v' + packageInfo.version;
 }
 
-exports.LaunchServer = function(config) {
+exports.launchServer = function(config) {
   siteBuilder.setConfiguration(config);
 
   // Passed through to bodyParser.json().

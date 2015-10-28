@@ -208,12 +208,20 @@ illustrates each of the following settings:
   once they are pushed to the
   [18F Guides Template](https://pages.18f.gov/guides-template/)
 * **builders**: a list of individual webhook listeners/document publishers;
-  each item contains:
+  each item contains the following fields, _each of which must contain a
+  unique value relative to all other `builders` entries_:
   * **branch**: the publishing branch from which to generate sites
   * **repositoryDir**: the directory within `home` into which all repositories
     will be cloned
   * **generatedSiteDir**: the directory within `home` into which all sites
     will be generated
+
+Also, each `builders` entry may override one or more of the following
+top-level values:
+
+* **githubOrg**
+* **pagesConfig**
+* **assetRoot**
 
 The `builders` list allows us to run one server to publish both
 https://pages.18f.gov/ and the authenticated https://pages-staging.18f.gov/.
