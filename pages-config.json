@@ -14,6 +14,7 @@
   "assetRoot":        "/guides-template",
   "fileLockWaitTime": 30000,
   "fileLockPollTime": 1000,
+  "secretKeyFile":    "/home/ubuntu/.18f-pages.secret",
   "builders": [
     {
       "branch":           "18f-pages",
