@@ -18,8 +18,12 @@ exports.launchServer = function(config) {
   siteBuilder.setConfiguration(config);
   return webhookValidator.loadKeyDictionary(
     config.secretKeyFile, config.builders)
-    .then(function(keyDictionary) { return doLaunch(config, keyDictionary); })
-    .catch(function(err) { console.error('Failed to start server:', err); });
+    .then(function(keyDictionary) {
+      return doLaunch(config, keyDictionary);
+    })
+    .catch(function(err) {
+      console.error('Failed to start server:', err);
+    });
 };
 
 function doLaunch(config, keyDictionary) {
