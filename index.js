@@ -3,7 +3,6 @@
 'use strict';
 
 var hookshot = require('hookshot');
-var path = require('path');
 var siteBuilder = require('./lib/site-builder');
 var packageInfo = require('./package.json');
 var webhookValidator = require('github-webhook-validator');
@@ -12,7 +11,7 @@ var exports = module.exports = {};
 
 exports.versionString = function() {
   return packageInfo.name + ' v' + packageInfo.version;
-}
+};
 
 exports.launchServer = function(config) {
   siteBuilder.setConfiguration(config);
