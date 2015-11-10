@@ -14,6 +14,7 @@ function FilesHelper(config, done) {
   this.configYml = path.resolve(this.testRepoDir, '_config.yml');
   this.internalConfig = path.resolve(this.testRepoDir, '_config_internal.yml');
   this.externalConfig = path.resolve(this.testRepoDir, '_config_external.yml');
+  this.filesToDelete = [];
   this.lockDir = path.resolve(__dirname, 'site_builder_test_lock_dir');
   this.lockfilePath = path.resolve(this.lockDir, '.update-lock-repo_name');
   fs.mkdir(this.lockDir, '0700', done);
@@ -23,8 +24,11 @@ FilesHelper.prototype.afterEach = function(done) {
   var that = this;
   var removePromise = this.removeFile(this.configYml);
 
-  removePromise = removePromise
-    .then(function() { return that.removeFile(that.fileToDelete); });
+  this.filesToDelete.map(function(fileToDelete) {
+    removePromise = removePromise
+      .then(function() { return that.removeFile(fileToDelete); });
+  });
+  this.filesToDelete = [];
 
   removePromise = removePromise
     .then(function() { return that.removeRepoDir(); })
@@ -41,7 +45,7 @@ FilesHelper.prototype.createRepoDir = function(done) {
 };
 
 FilesHelper.prototype.createRepoWithFile = function(filename, contents, done) {
-  this.fileToDelete = filename;
+  this.filesToDelete = [filename];
   this.createRepoDir(function() {
     fs.writeFile(filename, contents, done);
   });
