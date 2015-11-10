@@ -409,6 +409,63 @@ describe('SiteBuilder', function() {
         }));
       });
     });
+
+    it('should publish with internal config only', function(done) {
+      mySpawn.setDefault(mySpawn.simple(0));
+      logMock.expects('log').withExactArgs('syncing repo:', 'repo_name');
+      logMock.expects('log').withExactArgs(
+        'generating', config.pagesConfig);
+      logMock.expects('log').withExactArgs(
+        'removing generated', config.pagesConfig);
+
+      filenameToContents[filesHelper.internalConfig] = '';
+      var opts = makeOpts();
+
+      filesHelper.createRepoWithFiles(filenameToContents, function() {
+        opts.internalDestDir = 'internal_dest_dir';
+        makeBuilder(opts).build(check(done, function(err) {
+          expect(err).to.be.undefined;
+          expect(spawnCalls()).to.eql([
+            'git stash',
+            'git pull',
+            'jekyll build --trace --destination internal_dest_dir/repo_name ' +
+              '--config _config.yml,_config_internal.yml,_config_18f_pages.yml',
+            'jekyll build --trace --destination dest_dir/repo_name ' +
+              '--config _config.yml,_config_18f_pages.yml',
+          ]);
+          logMock.verify();
+        }));
+      });
+    });
+
+    it('should publish with internal and external configs', function(done) {
+      mySpawn.setDefault(mySpawn.simple(0));
+      logMock.expects('log').withExactArgs('syncing repo:', 'repo_name');
+      logMock.expects('log').withExactArgs(
+        'generating', config.pagesConfig);
+      logMock.expects('log').withExactArgs(
+        'removing generated', config.pagesConfig);
+
+      filenameToContents[filesHelper.internalConfig] = '';
+      filenameToContents[filesHelper.externalConfig] = '';
+      var opts = makeOpts();
+
+      filesHelper.createRepoWithFiles(filenameToContents, function() {
+        opts.internalDestDir = 'internal_dest_dir';
+        makeBuilder(opts).build(check(done, function(err) {
+          expect(err).to.be.undefined;
+          expect(spawnCalls()).to.eql([
+            'git stash',
+            'git pull',
+            'jekyll build --trace --destination internal_dest_dir/repo_name ' +
+              '--config _config.yml,_config_internal.yml,_config_18f_pages.yml',
+            'jekyll build --trace --destination dest_dir/repo_name ' +
+              '--config _config.yml,_config_external.yml,_config_18f_pages.yml',
+          ]);
+        logMock.verify();
+        }));
+      });
+    });
   });
 
   describe('makeBuilderListener and launchBuilder', function() {
