@@ -46,8 +46,18 @@ FilesHelper.prototype.createRepoDir = function(done) {
 
 FilesHelper.prototype.createRepoWithFile = function(filename, contents, done) {
   this.filesToDelete = [filename];
+  var that = this;
+  var filesRemaining = this.filesToDelete.length;
+
+  var allDone = function() {
+    filesRemaining--;
+    if (filesRemaining === 0) { done(); }
+  };
+
   this.createRepoDir(function() {
-    fs.writeFile(filename, contents, done);
+    that.filesToDelete.map(function(name) {
+      fs.writeFile(name, contents, allDone);
+    });
   });
 };
 
