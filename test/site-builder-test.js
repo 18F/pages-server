@@ -399,6 +399,45 @@ describe('SiteBuilder', function() {
     });
   });
 
+  describe('internal publishing mechanism', function() {
+    var internalConfig, externalConfig;
+
+    before(function() {
+      internalConfig = path.resolve(testRepoDir, '_config_internal.yml');
+      externalConfig = path.resolve(testRepoDir, '_config_external.yml');
+    });
+
+    it('should error if internal config without internal dir', function(done) {
+      mySpawn.setDefault(mySpawn.simple(0));
+      logMock.expects('log').withExactArgs('syncing repo:', 'repo_name');
+
+      createRepoWithFile(internalConfig, '', function() {
+        makeBuilder().build(check(done, function(err) {
+          expect(err).to.equal('Error: failed to build a site with a ' +
+            '_config_internal.yml file without an internalSiteDir defined ' +
+            'in the builder configuration');
+          expect(spawnCalls()).to.eql(['git stash', 'git pull']);
+          logMock.verify();
+        }));
+      });
+    });
+
+    it('should error if external config without internal conf', function(done) {
+      mySpawn.setDefault(mySpawn.simple(0));
+      logMock.expects('log').withExactArgs('syncing repo:', 'repo_name');
+
+      createRepoWithFile(externalConfig, '', function() {
+        makeBuilder().build(check(done, function(err) {
+          expect(err).to.equal('Error: failed to build a site with a ' +
+            '_config_external.yml file without a corresponding ' +
+            '_config_internal.yml file');
+          expect(spawnCalls()).to.eql(['git stash', 'git pull']);
+          logMock.verify();
+        }));
+      });
+    });
+  });
+
   describe('makeBuilderListener and launchBuilder', function() {
     var webhook, incomingPayload, builderConfig, cloneDir, outputDir, buildLog;
 
