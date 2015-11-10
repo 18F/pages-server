@@ -44,11 +44,16 @@ FilesHelper.prototype.createRepoDir = function(done) {
   });
 };
 
-FilesHelper.prototype.createRepoWithFile = function(filename, contents, done) {
-  this.filesToDelete = [filename];
+FilesHelper.prototype.createRepoWithFiles = function(nameToContents, done) {
+  this.filesToDelete = [];
+  for (var name in nameToContents) {
+    if (nameToContents.hasOwnProperty(name)) {
+      this.filesToDelete.push(name);
+    }
+  }
+
   var that = this;
   var filesRemaining = this.filesToDelete.length;
-
   var allDone = function() {
     filesRemaining--;
     if (filesRemaining === 0) { done(); }
@@ -56,7 +61,7 @@ FilesHelper.prototype.createRepoWithFile = function(filename, contents, done) {
 
   this.createRepoDir(function() {
     that.filesToDelete.map(function(name) {
-      fs.writeFile(name, contents, allDone);
+      fs.writeFile(name, nameToContents[name], allDone);
     });
   });
 };

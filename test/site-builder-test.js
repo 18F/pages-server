@@ -24,7 +24,7 @@ chai.use(chaiAsPromised);
 
 describe('SiteBuilder', function() {
   var builder, config, origSpawn, mySpawn, logger, logMock;
-  var filesHelper, updateLock;
+  var filesHelper, updateLock, filenameToContents;
 
   function cloneConfig() {
     config = JSON.parse(JSON.stringify(OrigConfig));
@@ -51,6 +51,7 @@ describe('SiteBuilder', function() {
     logMock = sinon.mock(logger);
     updateLock = new fileLockedOperation.FileLockedOperation(
       filesHelper.lockfilePath);
+    filenameToContents = {};
   });
 
   afterEach(function(done) {
@@ -241,7 +242,8 @@ describe('SiteBuilder', function() {
       'generating', config.pagesConfig);
     logMock.expects('log').withExactArgs(
       'removing generated', config.pagesConfig);
-    filesHelper.createRepoWithFile(filesHelper.gemfile, '', function() {
+    filenameToContents[filesHelper.gemfile] = '';
+    filesHelper.createRepoWithFiles(filenameToContents, function() {
       makeBuilder().build(check(done, function(err) {
         expect(err).to.be.undefined;
         expect(spawnCalls()).to.eql([
@@ -261,7 +263,8 @@ describe('SiteBuilder', function() {
     mySpawn.sequence.add(mySpawn.simple(0));
     mySpawn.sequence.add(mySpawn.simple(1));
     logMock.expects('log').withExactArgs('syncing repo:', 'repo_name');
-    filesHelper.createRepoWithFile(filesHelper.gemfile, '', function() {
+    filenameToContents[filesHelper.gemfile] = '';
+    filesHelper.createRepoWithFiles(filenameToContents, function() {
       makeBuilder().build(check(done, function(err) {
         var bundleInstallCommand = 'bundle install';
         expect(err).to.equal('Error: rebuild failed for repo_name with ' +
@@ -283,7 +286,8 @@ describe('SiteBuilder', function() {
       'generating', config.pagesConfig);
     logMock.expects('log').withExactArgs(
       'removing generated', config.pagesConfig);
-    filesHelper.createRepoWithFile(filesHelper.gemfile, '', function() {
+    filenameToContents[filesHelper.gemfile] = '';
+    filesHelper.createRepoWithFiles(filenameToContents, function() {
       makeBuilder().build(check(done, function(err) {
         var jekyllBuildCommand =
           'bundle exec jekyll build --trace --destination dest_dir/repo_name ' +
@@ -302,7 +306,8 @@ describe('SiteBuilder', function() {
     logMock.expects('log').withExactArgs('syncing repo:', 'repo_name');
     logMock.expects('log').withExactArgs(
       'using existing', config.pagesConfig);
-    filesHelper.createRepoWithFile(filesHelper.pagesConfig, '', function() {
+    filenameToContents[filesHelper.pagesConfig] = '';
+    filesHelper.createRepoWithFiles(filenameToContents, function() {
       makeBuilder().build(check(done, function(err) {
         expect(err).to.be.undefined;
         expect(spawnCalls()).to.eql([
@@ -321,8 +326,9 @@ describe('SiteBuilder', function() {
     logMock.expects('log').withExactArgs('syncing repo:', 'repo_name');
     logMock.expects('log').withExactArgs(
       'using existing', config.pagesConfig);
-    filesHelper.createRepoWithFile(
-      filesHelper.pagesConfig, 'baseurl:  /new-destination  ', function() {
+    filenameToContents[filesHelper.pagesConfig] =
+      'baseurl:  /new-destination  ';
+    filesHelper.createRepoWithFiles(filenameToContents, function() {
       makeBuilder().build(check(done, function(err) {
         expect(err).to.be.undefined;
         expect(spawnCalls()).to.eql([
@@ -339,7 +345,8 @@ describe('SiteBuilder', function() {
   it('should use rsync if _config.yml is not present', function(done) {
     mySpawn.setDefault(mySpawn.simple(0));
     logMock.expects('log').withExactArgs('syncing repo:', 'repo_name');
-    filesHelper.createRepoWithFile(filesHelper.pagesConfig, '', function() {
+    filenameToContents[filesHelper.pagesConfig] = '';
+    filesHelper.createRepoWithFiles(filenameToContents, function() {
       filesHelper.removeFile(filesHelper.configYml)
         .then(function() {
           makeBuilder().build(check(done, function(err) {
@@ -361,8 +368,8 @@ describe('SiteBuilder', function() {
       mySpawn.setDefault(mySpawn.simple(0));
       logMock.expects('log').withExactArgs('syncing repo:', 'repo_name');
 
-      filesHelper.createRepoWithFile(
-        filesHelper.internalConfig, '', function() {
+      filenameToContents[filesHelper.internalConfig] = '';
+      filesHelper.createRepoWithFiles(filenameToContents, function() {
         makeBuilder().build(check(done, function(err) {
           expect(err).to.equal('Error: failed to build a site with a ' +
             '_config_internal.yml file without an internalSiteDir defined ' +
@@ -377,8 +384,8 @@ describe('SiteBuilder', function() {
       mySpawn.setDefault(mySpawn.simple(0));
       logMock.expects('log').withExactArgs('syncing repo:', 'repo_name');
 
-      filesHelper.createRepoWithFile(
-        filesHelper.externalConfig, '', function() {
+      filenameToContents[filesHelper.externalConfig] = '';
+      filesHelper.createRepoWithFiles(filenameToContents, function() {
         makeBuilder().build(check(done, function(err) {
           expect(err).to.equal('Error: failed to build a site with a ' +
             '_config_external.yml file without a corresponding ' +
