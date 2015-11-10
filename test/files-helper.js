@@ -21,8 +21,12 @@ function FilesHelper(config, done) {
 
 FilesHelper.prototype.afterEach = function(done) {
   var that = this;
-  this.removeFile(this.configYml)
-    .then(function() { return that.removeFile(that.fileToDelete); })
+  var removePromise = this.removeFile(this.configYml);
+
+  removePromise = removePromise
+    .then(function() { return that.removeFile(that.fileToDelete); });
+
+  removePromise = removePromise
     .then(function() { return that.removeRepoDir(); })
     .then(done, done);
 };
