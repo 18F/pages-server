@@ -69,7 +69,7 @@ describe('SiteBuilder', function() {
     return function(err) { try { cb(err); done(); } catch (e) { done(e); } };
   };
 
-  var makeBuilder = function() {
+  var makeOpts = function() {
     var info = {
       repository: {
         name: 'repo_name'
@@ -82,8 +82,11 @@ describe('SiteBuilder', function() {
       'repositoryDir': 'repo_dir',
       'generatedSiteDir': 'dest_dir'
     };
+    return new Options(info, config, builderConfig);
+  };
 
-    var opts = new Options(info, config, builderConfig);
+  var makeBuilder = function(opts) {
+    if (!opts) { opts = makeOpts(); }
     opts.sitePath = filesHelper.testRepoDir;
     return new siteBuilder.SiteBuilder(opts, logger, updateLock);
   };
@@ -164,6 +167,17 @@ describe('SiteBuilder', function() {
       builder._parseDestinationFromConfigData('baseurl: /new-destination\n');
       expect(builder.buildDestination).to.equal('dest_dir/new-destination');
     });
+
+    it('should set the internal destination from config data', function() {
+      var opts = makeOpts();
+      opts.internalDestDir = 'internal_dest_dir';
+      var builder = makeBuilder(opts);
+      builder._parseDestinationFromConfigData('baseurl: /new-destination\n');
+      expect(builder.buildDestination).to.equal('dest_dir/new-destination');
+      expect(builder.internalBuildDestination).to.equal(
+        'internal_dest_dir/new-destination');
+    });
+
 
     it('should parse baseurl if no leading space', function() {
       builder._parseDestinationFromConfigData('baseurl:/new-destination\n');
