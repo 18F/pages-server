@@ -23,8 +23,6 @@ RequestHelper.prototype.httpOptions = function(port, payload, secret) {
     path: '/',
     method: 'POST',
     headers: {
-      'Request URL': 'https://pages.18f.gov/deploy',
-      'Request method': 'POST',
       'content-type': 'application/json',
       'Expect': '',
       'User-Agent': 'GitHub-Hookshot/9db916b',
