@@ -10,27 +10,33 @@ var chaiAsPromised = require('chai-as-promised');
 var sinon = require('sinon');
 var childProcess = require('child_process');
 var mockSpawn = require('mock-spawn');
+var Options = require('../lib/options');
 var siteBuilder = require('../lib/site-builder');
 var buildLogger = require('../lib/build-logger');
 var fileLockedOperation = require('file-locked-operation');
 
-var config = require('../pages-config.json');
-config.home = '';
-config.git = 'git';
-config.bundler = 'bundle';
-config.jekyll = 'jekyll';
-config.rsync = 'rsync';
+var OrigConfig = require('../pages-config.json');
 
 var expect = chai.expect;
 chai.should();
 chai.use(chaiAsPromised);
 
 describe('SiteBuilder', function() {
-  var builder, origSpawn, mySpawn, logger, logMock;
+  var builder, config, origSpawn, mySpawn, logger, logMock;
   var lockDir, lockfilePath, updateLock;
   var testRepoDir, fileToDelete, gemfile, pagesConfig, configYml;
 
+  function cloneConfig() {
+    config = JSON.parse(JSON.stringify(OrigConfig));
+    config.home = '';
+    config.git = 'git';
+    config.bundler = 'bundle';
+    config.jekyll = 'jekyll';
+    config.rsync = 'rsync';
+  }
+
   before(function(done) {
+    cloneConfig();
     siteBuilder.setConfiguration(config);
     testRepoDir = path.resolve(__dirname, 'site_builder_test');
     gemfile = path.resolve(testRepoDir, 'Gemfile');
@@ -120,67 +126,10 @@ describe('SiteBuilder', function() {
       'generatedSiteDir': 'dest_dir'
     };
 
-    var opts = new siteBuilder.Options(info, builderConfig);
+    var opts = new Options(info, config, builderConfig);
     opts.sitePath = testRepoDir;
     return new siteBuilder.SiteBuilder(opts, logger, updateLock);
   };
-
-  describe('Options', function() {
-    it('should use top-level configuration defaults', function() {
-      var info = {
-        repository: {
-          name: 'repo_name'
-        },
-        ref: 'refs/heads/18f-pages'
-      };
-
-      var builderConfig = {
-        'branch': '18f-pages',
-        'repositoryDir': 'repo_dir',
-        'generatedSiteDir': 'dest_dir'
-      };
-
-      var opts = new siteBuilder.Options(info, builderConfig);
-      builder = new siteBuilder.SiteBuilder(opts, logger, updateLock);
-      expect(builder.opts.repoDir).to.equal('repo_dir');
-      expect(builder.opts.repoName).to.equal('repo_name');
-      expect(builder.opts.sitePath).to.equal('repo_dir/repo_name');
-      expect(builder.opts.branch).to.equal('18f-pages');
-      expect(builder.opts.destDir).to.equal('dest_dir');
-      expect(builder.opts.githubOrg).to.equal('18F');
-      expect(builder.opts.pagesConfig).to.equal('_config_18f_pages.yml');
-      expect(builder.opts.assetRoot).to.equal('/guides-template');
-    });
-
-    it('should override top-level defaults if builder-defined', function() {
-      var info = {
-        repository: {
-          name: 'repo_name'
-        },
-        ref: 'refs/heads/foobar-pages'
-      };
-
-      var builderConfig = {
-        'githubOrg': 'foobar',
-        'pagesConfig': '_config_foobar_pages.yml',
-        'branch': 'foobar-pages',
-        'repositoryDir': 'repo_dir',
-        'generatedSiteDir': 'dest_dir',
-        'assetRoot': '/foobar-template'
-      };
-
-      var opts = new siteBuilder.Options(info, builderConfig);
-      builder = new siteBuilder.SiteBuilder(opts, logger, updateLock);
-      expect(builder.opts.repoDir).to.equal('repo_dir');
-      expect(builder.opts.repoName).to.equal('repo_name');
-      expect(builder.opts.sitePath).to.equal('repo_dir/repo_name');
-      expect(builder.opts.branch).to.equal('foobar-pages');
-      expect(builder.opts.destDir).to.equal('dest_dir');
-      expect(builder.opts.githubOrg).to.equal('foobar');
-      expect(builder.opts.pagesConfig).to.equal('_config_foobar_pages.yml');
-      expect(builder.opts.assetRoot).to.equal('/foobar-template');
-    });
-  });
 
   it('should write the expected configuration', function(done) {
     builder = makeBuilder();
