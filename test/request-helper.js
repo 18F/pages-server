@@ -13,7 +13,7 @@ function RequestHelper() {
 
 RequestHelper.prototype.makeSignature = function(payload, secret) {
   return 'sha1=' +
-    crypto.createHmac('sha1', secret).update(payload).digest('hex');
+    crypto.createHmac('sha1', secret).update(payload, 'utf8').digest('hex');
 };
 
 RequestHelper.prototype.httpOptions = function(port, payload, secret) {
@@ -23,8 +23,6 @@ RequestHelper.prototype.httpOptions = function(port, payload, secret) {
     path: '/',
     method: 'POST',
     headers: {
-      'Request URL': 'https://pages.18f.gov/deploy',
-      'Request method': 'POST',
       'content-type': 'application/json',
       'Expect': '',
       'User-Agent': 'GitHub-Hookshot/9db916b',
@@ -32,7 +30,10 @@ RequestHelper.prototype.httpOptions = function(port, payload, secret) {
       'X-GitHub-Event': 'push',
       'X-Hub-Signature': this.makeSignature(payload, secret),
       'Content-Type': 'application/json',
-      'Content-Length': payload.length
+      // See the following for why payload.length doesn't cut it for
+      // Content-Length (note GitHub doesn't send Content-Length):
+      // https://stackoverflow.com/questions/17922748/
+      'Content-Length': Buffer.byteLength(payload, 'utf8')
     }
   };
 };
@@ -45,7 +46,9 @@ RequestHelper.prototype.makePayload = function(branch) {
       'full_name': '18F/foo',
       // Alter the name of the organization so the request is silently ignored
       // to avoid tons of server logging in the background.
-      'organization': '19G'
+      'organization': '19G',
+      // Include a UTF-8 character to ensure it’s handled correctly.
+      'description': 'The apostrophe in "it’s" is a UTF-8 character.'
     },
     'head_commit': {
       'id': 'deadbeef',
@@ -68,12 +71,12 @@ RequestHelper.prototype.sendRequest = function(options, payload) {
         if (res.statusCode >= 200 && res.statusCode <= 300) {
           resolve(data);
         } else {
-          reject(data);
+          reject(new Error(data));
         }
       });
     });
 
-    req.on('error', function(e) { reject(e.message); });
+    req.on('error', function(err) { reject(err); });
     req.write(payload);
     req.end();
   });
