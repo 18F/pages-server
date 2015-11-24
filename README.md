@@ -92,6 +92,39 @@ branch, with the idea that most changes will be applied first to
 site is ready for public release, the `18f-pages-staging` branch will be
 merged into `18f-pages`, publishing the site at https://pages.18f.gov/.
 
+### <a name="internal-external"></a>Publishing to internal and external sites from the same branch
+
+It is possible to configure your site to publish to both an _internal_ site
+and an _external_ site from the same branch.
+
+- Add a `_config_internal.yml` file to your Jekyll site containing the
+  configuration needed to filter out internal-only content. For example, your
+  internal-only content may be wrapped using the following
+  [Liquid conditional](https://github.com/Shopify/liquid/wiki/Liquid-for-Designers):<br/>
+  <pre>
+  {% if site.internal %}REDACTED TO PROTECT THE INNOCENT AND THEIR VICTIMS{% endif %}
+  </pre>
+  Then, your `_config_internal.yml` should contain the property:
+  <pre>
+  internal: true
+  </pre>
+  However, you're free to implement any filtering and configuration scheme
+  that makes sense for your site.
+- Add a [`internalSiteDir` attribute to one of the `builders` in your
+  configuration](#pages-config). The internal version of your site will be
+  generated in this directory, and the external version will be generated into
+  the `generatedSiteDir` directory for the `builder`.
+- Configure your web server to serve from `internalSiteDir` and
+  `generatedSiteDir` from two different virtual hosts. Configure the
+  `internalSiteDir` host to provide authenticated access. For an example, see
+  the [18F Pages Nginx configuration for https://pages-internal.18f.gov/](https://github.com/18F/hub/blob/master/deploy/etc/nginx/vhosts/pages.conf).
+
+You may also add a `_config_external.yml` file for additional configuration,
+but a `_config_internal.yml` file must still be present.
+
+If you need a site to remain internal-only, set up a separate [`builders`
+entry in the configuration](#pages-config) for an internal-only branch.
+
 ### <a name="webhook"></a>Webhook configuration
 
 You will need to configure one or more
@@ -219,6 +252,8 @@ illustrates each of the following settings:
     will be cloned
   * **generatedSiteDir**: the directory within `home` into which all sites
     will be generated
+  * **internalSiteDir**: the directory within `home` into which internal views
+    of sites will be generated
 
 Also, each `builders` entry may override one or more of the following
 top-level values:
