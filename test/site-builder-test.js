@@ -241,6 +241,7 @@ describe('SiteBuilder', function() {
         expect(spawnCalls()).to.eql([
           'git stash',
           'git pull',
+          'git submodule update --init',
           'jekyll build --trace --destination dest_dir/repo_name ' +
             '--config _config.yml,_config_18f_pages.yml',
         ]);
@@ -263,6 +264,7 @@ describe('SiteBuilder', function() {
         expect(spawnCalls()).to.eql([
           'git stash',
           'git pull',
+          'git submodule update --init',
           'bundle install',
           'bundle exec jekyll build --trace --destination dest_dir/repo_name ' +
             '--config _config.yml,_config_18f_pages.yml',
@@ -275,6 +277,7 @@ describe('SiteBuilder', function() {
   it ('should fail if bundle install fails', function(done) {
     mySpawn.sequence.add(mySpawn.simple(0));
     mySpawn.sequence.add(mySpawn.simple(0));
+    mySpawn.sequence.add(mySpawn.simple(0));
     mySpawn.sequence.add(mySpawn.simple(1));
     logMock.expects('log').withExactArgs('syncing repo:', 'repo_name');
     filenameToContents[filesHelper.gemfile] = '';
@@ -284,13 +287,17 @@ describe('SiteBuilder', function() {
         expect(err).to.equal('Error: rebuild failed for repo_name with ' +
           'exit code 1 from command: ' + bundleInstallCommand);
         expect(spawnCalls()).to.eql([
-          'git stash', 'git pull', bundleInstallCommand]);
+          'git stash',
+          'git pull',
+          'git submodule update --init',
+          bundleInstallCommand]);
         logMock.verify();
       }));
     });
   });
 
   it ('should fail if jekyll build fails', function(done) {
+    mySpawn.sequence.add(mySpawn.simple(0));
     mySpawn.sequence.add(mySpawn.simple(0));
     mySpawn.sequence.add(mySpawn.simple(0));
     mySpawn.sequence.add(mySpawn.simple(0));
@@ -309,7 +316,11 @@ describe('SiteBuilder', function() {
         expect(err).to.equal('Error: rebuild failed for repo_name with ' +
           'exit code 1 from command: ' + jekyllBuildCommand);
         expect(spawnCalls()).to.eql([
-          'git stash', 'git pull', 'bundle install', jekyllBuildCommand]);
+          'git stash',
+          'git pull',
+          'git submodule update --init',
+          'bundle install',
+          jekyllBuildCommand]);
         logMock.verify();
       }));
     });
@@ -327,6 +338,7 @@ describe('SiteBuilder', function() {
         expect(spawnCalls()).to.eql([
           'git stash',
           'git pull',
+          'git submodule update --init',
           'jekyll build --trace --destination dest_dir/repo_name ' +
             '--config _config.yml,_config_18f_pages.yml',
         ]);
@@ -348,6 +360,7 @@ describe('SiteBuilder', function() {
         expect(spawnCalls()).to.eql([
           'git stash',
           'git pull',
+          'git submodule update --init',
           'jekyll build --trace --destination dest_dir/new-destination ' +
             '--config _config.yml,_config_18f_pages.yml',
         ]);
@@ -368,6 +381,7 @@ describe('SiteBuilder', function() {
             expect(spawnCalls()).to.eql([
               'git stash',
               'git pull',
+              'git submodule update --init',
               'rsync -vaxp --delete --ignore-errors --exclude=.[A-Za-z0-9]* ' +
                 './ dest_dir/repo_name',
             ]);
@@ -388,7 +402,9 @@ describe('SiteBuilder', function() {
           expect(err).to.equal('Error: failed to build a site with a ' +
             '_config_internal.yml file without an internalSiteDir defined ' +
             'in the builder configuration');
-          expect(spawnCalls()).to.eql(['git stash', 'git pull']);
+          expect(spawnCalls()).to.eql([
+            'git stash', 'git pull', 'git submodule update --init'
+          ]);
           logMock.verify();
         }));
       });
@@ -404,7 +420,9 @@ describe('SiteBuilder', function() {
           expect(err).to.equal('Error: failed to build a site with a ' +
             '_config_external.yml file without a corresponding ' +
             '_config_internal.yml file');
-          expect(spawnCalls()).to.eql(['git stash', 'git pull']);
+          expect(spawnCalls()).to.eql([
+            'git stash', 'git pull', 'git submodule update --init'
+          ]);
           logMock.verify();
         }));
       });
@@ -428,6 +446,7 @@ describe('SiteBuilder', function() {
           expect(spawnCalls()).to.eql([
             'git stash',
             'git pull',
+            'git submodule update --init',
             'jekyll build --trace --destination internal_dest_dir/repo_name ' +
               '--config _config.yml,_config_internal.yml,_config_18f_pages.yml',
             'jekyll build --trace --destination dest_dir/repo_name ' +
@@ -457,6 +476,7 @@ describe('SiteBuilder', function() {
           expect(spawnCalls()).to.eql([
             'git stash',
             'git pull',
+            'git submodule update --init',
             'jekyll build --trace --destination internal_dest_dir/repo_name ' +
               '--config _config.yml,_config_internal.yml,_config_18f_pages.yml',
             'jekyll build --trace --destination dest_dir/repo_name ' +
