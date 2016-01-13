@@ -559,12 +559,14 @@ describe('SiteBuilder', function() {
 
     it('should create a function to launch a builder', function() {
       siteBuilder.makeBuilderListener(webhook, builderConfig);
-      expect(webhook.on.calledOnce).to.be.true;
-      var args = webhook.on.args[0];
-      expect(args.length).to.equal(2);
-      expect(args[0]).to.equal('refs/heads/18f-pages');
-      var launcher = args[1];
-      expect(launcher).to.be.a.Function;
+      expect(webhook.on.calledTwice).to.be.true;
+      expect(webhook.on.args[0].length).to.equal(2);
+      expect(webhook.on.args[0][0]).to.equal('create');
+      expect(webhook.on.args[1][0]).to.equal('push');
+      expect(webhook.on.args[1].length).to.equal(2);
+      expect(webhook.on.args[0][1]).to.be.a.Function;
+      expect(webhook.on.args[1][1]).to.be.a.Function;
+      expect(webhook.on.args[0][1]).to.equal(webhook.on.args[1][1]);
     });
 
     it('should create a builder that builds the site', function(done) {
