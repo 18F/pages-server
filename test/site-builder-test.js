@@ -91,25 +91,23 @@ describe('SiteBuilder', function() {
     return new siteBuilder.SiteBuilder(opts, '18f-pages', logger, updateLock);
   };
 
-  it('should write the expected configuration', function(done) {
-    builder = makeBuilder();
-    logMock.expects('log').withExactArgs(
-      'generating', config.pagesConfig);
-    logMock.expects('log').withExactArgs(
-      'removing generated', config.pagesConfig);
+  describe('generated configuration', function() {
+    var inRepoDir, writeConfig, readConfig, checkResults;
 
-    var inRepoDir = new Promise(function(resolve, reject) {
-      filesHelper.createRepoDir(function(err) {
-        if (err) { reject(err); } else { resolve(); }
+    inRepoDir = function() {
+      return new Promise(function(resolve, reject) {
+        filesHelper.createRepoDir(function(err) {
+          if (err) { reject(err); } else { resolve(); }
+        });
       });
-    });
+    };
 
-    var writeConfig = function() {
+    writeConfig = function() {
       var configExists;
       return builder.readOrWriteConfig(configExists = false);
     };
 
-    var readConfig = function() {
+    readConfig = function() {
       expect(builder.generatedConfig).to.be.true;
       return new Promise(function(resolve, reject) {
         fs.readFile(filesHelper.pagesConfig, function(err, data) {
@@ -118,7 +116,7 @@ describe('SiteBuilder', function() {
       });
     };
 
-    var checkResults = function(content) {
+    checkResults = function(content) {
       expect(content).to.equal('baseurl: /repo_name\n' +
         'asset_root: ' + config.assetRoot + '\n');
       return new Promise(function(resolve, reject) {
@@ -130,8 +128,16 @@ describe('SiteBuilder', function() {
       });
     };
 
-    inRepoDir.then(writeConfig).then(readConfig).then(checkResults)
-        .then(function() { logMock.verify(); }).should.notify(done);
+    it('should write the expected configuration', function(done) {
+      builder = makeBuilder();
+      logMock.expects('log').withExactArgs(
+        'generating', config.pagesConfig);
+      logMock.expects('log').withExactArgs(
+        'removing generated', config.pagesConfig);
+
+      inRepoDir().then(writeConfig).then(readConfig).then(checkResults)
+          .then(function() { logMock.verify(); }).should.notify(done);
+    });
   });
 
   // Note that this internal function will only get called when a
