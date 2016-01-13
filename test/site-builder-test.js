@@ -88,7 +88,7 @@ describe('SiteBuilder', function() {
   var makeBuilder = function(opts) {
     if (!opts) { opts = makeOpts(); }
     opts.sitePath = filesHelper.testRepoDir;
-    return new siteBuilder.SiteBuilder(opts, logger, updateLock);
+    return new siteBuilder.SiteBuilder(opts, '18f-pages', logger, updateLock);
   };
 
   it('should write the expected configuration', function(done) {
