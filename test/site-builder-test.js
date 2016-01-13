@@ -219,7 +219,7 @@ describe('SiteBuilder', function() {
     logMock.expects('log').withExactArgs(
       'cloning', 'repo_name', 'into', filesHelper.testRepoDir);
     makeBuilder().build(check(done, function(err) {
-      var cloneCommand = 
+      var cloneCommand =
         'git clone git@github.com:18F/repo_name.git --branch 18f-pages';
       expect(err).to.equal('Error: failed to clone repo_name with ' +
         'exit code 1 from command: ' + cloneCommand);
