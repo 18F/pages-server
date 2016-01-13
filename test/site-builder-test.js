@@ -117,11 +117,11 @@ describe('SiteBuilder', function() {
     };
 
     checkResults = function(content) {
-      expect(content).to.equal('baseurl: /repo_name\n' +
-        'asset_root: ' + config.assetRoot + '\n');
       return new Promise(function(resolve, reject) {
         // Note the done callback wrapper will remove the generated config.
         var buildDone = builder.generateBuildDone(function(err) {
+          expect(content).to.equal('baseurl: /repo_name\n' +
+            'asset_root: ' + config.assetRoot + '\n');
           if (err) { reject(err); } else { resolve(); }
         });
         buildDone();
