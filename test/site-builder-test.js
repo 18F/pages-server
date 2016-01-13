@@ -116,26 +116,54 @@ describe('SiteBuilder', function() {
       });
     };
 
-    checkResults = function(content) {
-      return new Promise(function(resolve, reject) {
-        // Note the done callback wrapper will remove the generated config.
-        var buildDone = builder.generateBuildDone(function(err) {
-          expect(content).to.equal('baseurl: /repo_name\n' +
-            'asset_root: ' + config.assetRoot + '\n');
-          if (err) { reject(err); } else { resolve(); }
+    checkResults = function(expectedContent) {
+      return function(content) {
+        return new Promise(function(resolve, reject) {
+          // Note the done callback wrapper will remove the generated config.
+          var buildDone = builder.generateBuildDone(function(err) {
+            expect(content).to.equal(expectedContent);
+            if (err) { reject(err); } else { resolve(); }
+          });
+          buildDone();
         });
-        buildDone();
-      });
+      };
     };
 
     it('should write the expected configuration', function(done) {
+      var expectedContent = 'baseurl: /repo_name\n' +
+        'asset_root: ' + config.assetRoot + '\n';
+
       builder = makeBuilder();
       logMock.expects('log').withExactArgs(
         'generating', config.pagesConfig);
       logMock.expects('log').withExactArgs(
         'removing generated', config.pagesConfig);
 
-      inRepoDir().then(writeConfig).then(readConfig).then(checkResults)
+      inRepoDir().then(writeConfig).then(readConfig)
+          .then(checkResults(expectedContent))
+          .then(function() { logMock.verify(); }).should.notify(done);
+    });
+
+    it('should write a config with a branch-specific baseurl', function(done) {
+      var expectedContent,
+          opts;
+
+      opts = makeOpts();
+      opts.sitePath = filesHelper.testRepoDir;
+      opts.branchInUrlPattern = 'v[0-9]+.[0-9]+.[0-9]*[a-z]+';
+      builder = new siteBuilder.SiteBuilder(
+        opts, 'v0.9.x', logger, updateLock);
+
+      expectedContent = 'baseurl: /repo_name/v0.9.x\n' +
+        'asset_root: ' + config.assetRoot + '\n';
+
+      logMock.expects('log').withExactArgs(
+        'generating', config.pagesConfig);
+      logMock.expects('log').withExactArgs(
+        'removing generated', config.pagesConfig);
+
+      inRepoDir().then(writeConfig).then(readConfig)
+          .then(checkResults(expectedContent))
           .then(function() { logMock.verify(); }).should.notify(done);
     });
   });
@@ -183,7 +211,6 @@ describe('SiteBuilder', function() {
       expect(builder.internalBuildDestination).to.equal(
         'internal_dest_dir/new-destination');
     });
-
 
     it('should parse baseurl if no leading space', function() {
       builder._parseDestinationFromConfigData('baseurl:/new-destination\n');
@@ -488,7 +515,43 @@ describe('SiteBuilder', function() {
             'jekyll build --trace --destination dest_dir/repo_name ' +
               '--config _config.yml,_config_external.yml,_config_18f_pages.yml',
           ]);
-        logMock.verify();
+          logMock.verify();
+        }));
+      });
+    });
+  });
+
+  describe('write to a branch-specific URL', function() {
+    it('should use config.branchInUrlPattern as a trigger', function(done) {
+      mySpawn.setDefault(mySpawn.simple(0));
+      logMock.expects('log').withExactArgs('syncing repo:', 'repo_name');
+      logMock.expects('log').withExactArgs(
+        'generating', config.pagesConfig);
+      logMock.expects('log').withExactArgs(
+        'removing generated', config.pagesConfig);
+
+      filenameToContents[filesHelper.gemfile] = '';
+      filesHelper.createRepoWithFiles(filenameToContents, function() {
+        var opts = makeOpts(),
+            builder;
+
+        opts.branchInUrlPattern = 'v[0-9]+.[0-9]+.[0-9]*[a-z]+';
+        opts.sitePath = filesHelper.testRepoDir;
+        builder = new siteBuilder.SiteBuilder(
+          opts, 'v0.9.x', logger, updateLock);
+
+        builder.build(check(done, function(err) {
+          expect(err).to.be.undefined;
+          expect(spawnCalls()).to.eql([
+            'git stash',
+            'git pull',
+            'git submodule update --init',
+            'bundle install',
+            'bundle exec jekyll build --trace ' +
+              '--destination dest_dir/repo_name/v0.9.x ' +
+              '--config _config.yml,_config_18f_pages.yml',
+          ]);
+          logMock.verify();
         }));
       });
     });
@@ -601,6 +664,42 @@ describe('SiteBuilder', function() {
       mySpawn.setDefault(mySpawn.simple(0));
       captureLogs();
       launcher(incomingPayload);
+    });
+
+    it('should build by matching branchInUrlPattern', function(done) {
+      var launcher, checkResult, payload, config;
+
+      checkResult = check(done, function(err) {
+        var logMsgs = console.log.args,
+            errorMsgs = console.error.args;
+        restoreLogs();
+        expect(err).to.be.null;
+        expect(logMsgs).to.eql([
+          ['18F/foo: starting build at commit deadbeef'],
+          ['description: Build me'],
+          ['timestamp: 2015-09-25'],
+          ['committer: michael.bland@gsa.gov'],
+          ['pusher: Mike Bland michael.bland@gsa.gov'],
+          ['sender: mbland'],
+          ['cloning foo into ' + cloneDir],
+          ['foo: build successful']
+        ]);
+        expect(errorMsgs).to.be.empty;
+        var expectedLog = logMsgs.join('\n') + '\n';
+        expect(fs.readFileSync(buildLog, 'utf8')).to.equal(expectedLog);
+      });
+
+      payload = JSON.parse(JSON.stringify(incomingPayload));
+      payload.ref = 'refs/heads/v0.9.x';
+      config = JSON.parse(JSON.stringify(builderConfig));
+      delete config.branch;
+      config.branchInUrlPattern = 'v[0-9]+.[0-9]+.[0-9]*[a-z]+';
+
+      siteBuilder.makeBuilderListener(webhook, config, checkResult);
+      launcher = webhook.on.args[0][1];
+      mySpawn.setDefault(mySpawn.simple(0));
+      captureLogs();
+      launcher(payload);
     });
 
     it('should create a builder that fails to build the site', function(done) {

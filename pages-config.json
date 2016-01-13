@@ -19,12 +19,24 @@
     {
       "branch":           "18f-pages",
       "repositoryDir":    "pages-repos",
-      "generatedSiteDir": "pages-generated"
+      "generatedSiteDir": "pages-generated",
+      "internalSiteDir":  "pages-internal"
     },
     {
       "branch":           "18f-pages-staging",
       "repositoryDir":    "pages-repos-staging",
-      "generatedSiteDir": "pages-staging"
+      "generatedSiteDir": "pages-staging",
+      "internalSiteDir":  "pages-internal"
+    },
+    {
+      "branch":           "18f-pages-internal",
+      "repositoryDir":    "pages-repos-internal",
+      "generatedSiteDir": "pages-internal"
+    },
+    {
+      "branchInUrlPattern": "v[0-9]+.[0-9]+.[0-9]*[a-z]+",
+      "repositoryDir":      "pages-repos-releases",
+      "generatedSiteDir":   "pages-releases"
     }
   ]
 }
