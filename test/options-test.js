@@ -58,7 +58,8 @@ describe('Options', function() {
       'branch': 'foobar-pages',
       'repositoryDir': 'repo_dir',
       'generatedSiteDir': 'dest_dir',
-      'assetRoot': '/foobar-template'
+      'assetRoot': '/foobar-template',
+      'branchInUrlPattern': 'v[0-9\]+.[0-9]+.[0-9]*[a-z]+',
     };
 
     var opts = new Options(info, config, builderConfig);
@@ -71,6 +72,8 @@ describe('Options', function() {
     expect(opts.githubOrg).to.equal('foobar');
     expect(opts.pagesConfig).to.equal('_config_foobar_pages.yml');
     expect(opts.assetRoot).to.equal('/foobar-template');
+    expect(opts.branchInUrlPattern.toString()).to.equal(
+      '/' + builderConfig.branchInUrlPattern + '/i');
   });
 
   it('should set internalDestDir when internalSiteDir defined', function() {
