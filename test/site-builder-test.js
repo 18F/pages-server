@@ -12,7 +12,7 @@ var childProcess = require('child_process');
 var mockSpawn = require('mock-spawn');
 var Options = require('../lib/options');
 var siteBuilder = require('../lib/site-builder');
-var buildLogger = require('../lib/build-logger');
+var BuildLogger = require('../lib/build-logger');
 var fileLockedOperation = require('file-locked-operation');
 
 var FilesHelper = require('./files-helper');
@@ -47,7 +47,7 @@ describe('SiteBuilder', function() {
     origSpawn = childProcess.spawn;
     mySpawn = mockSpawn();
     childProcess.spawn = mySpawn;
-    logger = new buildLogger.BuildLogger('/dev/null');
+    logger = new BuildLogger('/dev/null');
     logMock = sinon.mock(logger);
     updateLock = new fileLockedOperation.FileLockedOperation(
       filesHelper.lockfilePath);
