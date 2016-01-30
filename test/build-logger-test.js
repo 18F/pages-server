@@ -1,6 +1,3 @@
-/* jshint node: true */
-/* jshint expr: true */
-/* jshint mocha: true */
 'use strict';
 
 var path = require('path');

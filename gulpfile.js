@@ -1,8 +1,6 @@
-/* jshint node: true */
-
 var gulp = require('gulp');
 var mocha = require('gulp-mocha');
-var jshint = require('gulp-jshint');
+var eslint = require('gulp-eslint');
 
 gulp.task('test', function() {
   return gulp.src('./test/*.js', {read: false})
@@ -13,6 +11,6 @@ gulp.task('test', function() {
 
 gulp.task('lint', function() {
   return gulp.src(['bin/18f-pages', '*.js', 'lib/**/*.js', 'test/**/*.js'])
-    .pipe(jshint())
-    .pipe(jshint.reporter('default'));
+    .pipe(eslint())
+    .pipe(eslint.format());
 });

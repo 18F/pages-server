@@ -1,6 +1,3 @@
-/* jshint node: true */
-/* jshint expr: true */
-/* jshint mocha: true */
 'use strict';
 
 var fs = require('fs');
@@ -103,8 +100,8 @@ describe('SiteBuilder', function() {
     };
 
     writeConfig = function() {
-      var configExists;
-      return builder.readOrWriteConfig(configExists = false);
+      var configExists = false;
+      return builder.readOrWriteConfig(configExists);
     };
 
     readConfig = function() {
@@ -241,7 +238,7 @@ describe('SiteBuilder', function() {
       expect(spawnCalls()).to.eql([
         'git clone git@github.com:18F/repo_name.git --branch 18f-pages',
         'jekyll build --trace --destination dest_dir/repo_name ' +
-          '--config _config.yml,_config_18f_pages.yml',
+          '--config _config.yml,_config_18f_pages.yml'
       ]);
       logMock.verify();
     }));
@@ -276,7 +273,7 @@ describe('SiteBuilder', function() {
           'git pull',
           'git submodule update --init',
           'jekyll build --trace --destination dest_dir/repo_name ' +
-            '--config _config.yml,_config_18f_pages.yml',
+            '--config _config.yml,_config_18f_pages.yml'
         ]);
         logMock.verify();
       }));
@@ -300,7 +297,7 @@ describe('SiteBuilder', function() {
           'git submodule update --init',
           'bundle install',
           'bundle exec jekyll build --trace --destination dest_dir/repo_name ' +
-            '--config _config.yml,_config_18f_pages.yml',
+            '--config _config.yml,_config_18f_pages.yml'
         ]);
         logMock.verify();
       }));
@@ -373,7 +370,7 @@ describe('SiteBuilder', function() {
           'git pull',
           'git submodule update --init',
           'jekyll build --trace --destination dest_dir/repo_name ' +
-            '--config _config.yml,_config_18f_pages.yml',
+            '--config _config.yml,_config_18f_pages.yml'
         ]);
         logMock.verify();
       }));
@@ -395,7 +392,7 @@ describe('SiteBuilder', function() {
           'git pull',
           'git submodule update --init',
           'jekyll build --trace --destination dest_dir/new-destination ' +
-            '--config _config.yml,_config_18f_pages.yml',
+            '--config _config.yml,_config_18f_pages.yml'
         ]);
         logMock.verify();
       }));
@@ -416,7 +413,7 @@ describe('SiteBuilder', function() {
               'git pull',
               'git submodule update --init',
               'rsync -vaxp --delete --ignore-errors --exclude=.[A-Za-z0-9]* ' +
-                './ dest_dir/repo_name',
+                './ dest_dir/repo_name'
             ]);
             logMock.verify();
           }));
@@ -483,7 +480,7 @@ describe('SiteBuilder', function() {
             'jekyll build --trace --destination internal_dest_dir/repo_name ' +
               '--config _config.yml,_config_internal.yml,_config_18f_pages.yml',
             'jekyll build --trace --destination dest_dir/repo_name ' +
-              '--config _config.yml,_config_18f_pages.yml',
+              '--config _config.yml,_config_18f_pages.yml'
           ]);
           logMock.verify();
         }));
@@ -513,7 +510,7 @@ describe('SiteBuilder', function() {
             'jekyll build --trace --destination internal_dest_dir/repo_name ' +
               '--config _config.yml,_config_internal.yml,_config_18f_pages.yml',
             'jekyll build --trace --destination dest_dir/repo_name ' +
-              '--config _config.yml,_config_external.yml,_config_18f_pages.yml',
+              '--config _config.yml,_config_external.yml,_config_18f_pages.yml'
           ]);
           logMock.verify();
         }));
@@ -549,7 +546,7 @@ describe('SiteBuilder', function() {
             'bundle install',
             'bundle exec jekyll build --trace ' +
               '--destination dest_dir/repo_name/v0.9.x ' +
-              '--config _config.yml,_config_18f_pages.yml',
+              '--config _config.yml,_config_18f_pages.yml'
           ]);
           logMock.verify();
         }));
@@ -715,7 +712,7 @@ describe('SiteBuilder', function() {
           ['committer: michael.bland@gsa.gov'],
           ['pusher: Mike Bland michael.bland@gsa.gov'],
           ['sender: mbland'],
-          ['cloning foo into ' + cloneDir],
+          ['cloning foo into ' + cloneDir]
         ]);
         expect(errorMsgs).to.eql([
           ['Error: failed to clone foo with exit code 1 from command: ' +

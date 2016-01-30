@@ -1,5 +1,3 @@
-/* jshint node: true */
-/* jshint bitwise: false */
 'use strict';
 
 var hookshot = require('hookshot');
