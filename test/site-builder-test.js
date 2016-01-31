@@ -187,27 +187,32 @@ describe('SiteBuilder', function() {
 
     it('should keep the default destination if undefined', function() {
       builder._parseDestinationFromConfigData('');
-      expect(builder.buildDestination).to.equal('dest_dir/repo_name');
+      expect(builder.buildDestination).to.equal(
+        path.join('dest_dir/repo_name'));
     });
 
     it('should keep the default destination if empty', function() {
       builder._parseDestinationFromConfigData('baseurl:\n');
-      expect(builder.buildDestination).to.equal('dest_dir/repo_name');
+      expect(builder.buildDestination).to.equal(
+        path.join('dest_dir/repo_name'));
     });
 
     it('should keep the default destination if empty with spaces', function() {
       builder._parseDestinationFromConfigData('baseurl:   \n');
-      expect(builder.buildDestination).to.equal('dest_dir/repo_name');
+      expect(builder.buildDestination).to.equal(
+        path.join('dest_dir/repo_name'));
     });
 
     it('should keep the default destination if set to root path', function() {
       builder._parseDestinationFromConfigData('baseurl: /\n');
-      expect(builder.buildDestination).to.equal('dest_dir/repo_name');
+      expect(builder.buildDestination).to.equal(
+        path.join('dest_dir/repo_name'));
     });
 
     it('should set the destination from config data baseurl', function() {
       builder._parseDestinationFromConfigData('baseurl: /new-destination\n');
-      expect(builder.buildDestination).to.equal('dest_dir/new-destination');
+      expect(builder.buildDestination).to.equal(
+        path.join('dest_dir/new-destination'));
     });
 
     it('should set the internal destination from config data', function() {
@@ -215,20 +220,23 @@ describe('SiteBuilder', function() {
       opts.internalDestDir = 'internal_dest_dir';
       var builder = makeBuilder(opts);
       builder._parseDestinationFromConfigData('baseurl: /new-destination\n');
-      expect(builder.buildDestination).to.equal('dest_dir/new-destination');
+      expect(builder.buildDestination).to.equal(
+        path.join('dest_dir/new-destination'));
       expect(builder.internalBuildDestination).to.equal(
-        'internal_dest_dir/new-destination');
+        path.join('internal_dest_dir/new-destination'));
     });
 
     it('should parse baseurl if no leading space', function() {
       builder._parseDestinationFromConfigData('baseurl:/new-destination\n');
-      expect(builder.buildDestination).to.equal('dest_dir/new-destination');
+      expect(builder.buildDestination).to.equal(
+        path.join('dest_dir/new-destination'));
     });
 
     it('should trim all spaces around baseurl', function() {
       builder._parseDestinationFromConfigData(
         'baseurl:   /new-destination   \n');
-      expect(builder.buildDestination).to.equal('dest_dir/new-destination');
+      expect(builder.buildDestination).to.equal(
+        path.join('dest_dir/new-destination'));
     });
   });
 
@@ -250,8 +258,9 @@ describe('SiteBuilder', function() {
     return makeBuilder().build().should.be.fulfilled.then(function() {
       expect(spawnCalls()).to.eql([
         'git clone git@github.com:18F/repo_name.git --branch 18f-pages',
-        'jekyll build --trace --destination dest_dir/repo_name ' +
-          '--config _config.yml,_config_18f_pages.yml'
+        'jekyll build --trace --destination ' +
+          path.join('dest_dir/repo_name') +
+          ' --config _config.yml,_config_18f_pages.yml'
       ]);
       logMock.verify();
     });
@@ -287,8 +296,9 @@ describe('SiteBuilder', function() {
             'git stash',
             'git pull',
             'git submodule update --init',
-            'jekyll build --trace --destination dest_dir/repo_name ' +
-              '--config _config.yml,_config_18f_pages.yml'
+            'jekyll build --trace --destination ' +
+              path.join('dest_dir/repo_name') +
+              ' --config _config.yml,_config_18f_pages.yml'
           ]);
           logMock.verify();
         });
@@ -312,7 +322,8 @@ describe('SiteBuilder', function() {
             'git submodule update --init',
             'bundle install',
             'bundle exec jekyll build --trace --destination ' +
-              'dest_dir/repo_name --config _config.yml,_config_18f_pages.yml'
+              path.join('dest_dir/repo_name') +
+              ' --config _config.yml,_config_18f_pages.yml'
           ]);
           logMock.verify();
         });
@@ -391,8 +402,9 @@ describe('SiteBuilder', function() {
             'git stash',
             'git pull',
             'git submodule update --init',
-            'jekyll build --trace --destination dest_dir/repo_name ' +
-              '--config _config.yml,_config_18f_pages.yml'
+            'jekyll build --trace --destination ' +
+              path.join('dest_dir/repo_name') +
+              ' --config _config.yml,_config_18f_pages.yml'
           ]);
           logMock.verify();
         });
@@ -413,8 +425,9 @@ describe('SiteBuilder', function() {
             'git stash',
             'git pull',
             'git submodule update --init',
-            'jekyll build --trace --destination dest_dir/new-destination ' +
-              '--config _config.yml,_config_18f_pages.yml'
+            'jekyll build --trace --destination ' +
+              path.join('dest_dir/new-destination') +
+              ' --config _config.yml,_config_18f_pages.yml'
           ]);
           logMock.verify();
         });
@@ -436,7 +449,7 @@ describe('SiteBuilder', function() {
             'git pull',
             'git submodule update --init',
             'rsync -vaxp --delete --ignore-errors --exclude=.[A-Za-z0-9]* ' +
-              './ dest_dir/repo_name'
+              './ ' + path.join('dest_dir/repo_name')
           ]);
           logMock.verify();
         });
@@ -504,11 +517,12 @@ describe('SiteBuilder', function() {
               'git pull',
               'git submodule update --init',
               'jekyll build --trace --destination ' +
-                'internal_dest_dir/repo_name ' +
-                '--config _config.yml,_config_internal.yml,' +
+                path.join('internal_dest_dir/repo_name') +
+                ' --config _config.yml,_config_internal.yml,' +
                 '_config_18f_pages.yml',
-              'jekyll build --trace --destination dest_dir/repo_name ' +
-                '--config _config.yml,_config_18f_pages.yml'
+              'jekyll build --trace --destination ' +
+                path.join('dest_dir/repo_name') +
+                ' --config _config.yml,_config_18f_pages.yml'
             ]);
             logMock.verify();
           });
@@ -536,11 +550,12 @@ describe('SiteBuilder', function() {
               'git pull',
               'git submodule update --init',
               'jekyll build --trace --destination ' +
-                'internal_dest_dir/repo_name ' +
-                '--config _config.yml,_config_internal.yml,' +
+                path.join('internal_dest_dir/repo_name') +
+                ' --config _config.yml,_config_internal.yml,' +
                 '_config_18f_pages.yml',
-              'jekyll build --trace --destination dest_dir/repo_name ' +
-                '--config _config.yml,_config_external.yml,' +
+              'jekyll build --trace --destination ' +
+                path.join('dest_dir/repo_name') +
+                ' --config _config.yml,_config_external.yml,' +
                 '_config_18f_pages.yml'
             ]);
             logMock.verify();
@@ -609,8 +624,8 @@ describe('SiteBuilder', function() {
         'generatedSiteDir': path.join(filesHelper.dirs.testRepoDir, 'dest_dir')
       };
 
-      cloneDir = path.join(filesHelper.dirs.testRepoDir, 'repo_dir', 'foo');
-      outputDir = path.join(filesHelper.dirs.testRepoDir, 'dest_dir', 'foo');
+      cloneDir = path.join(filesHelper.dirs.testRepoDir, 'repo_dir/foo');
+      outputDir = path.join(filesHelper.dirs.testRepoDir, 'dest_dir/foo');
       buildLog = path.join(outputDir, 'build.log');
     });
 
