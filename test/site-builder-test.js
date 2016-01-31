@@ -1,5 +1,9 @@
 'use strict';
 
+var siteBuilder = require('../lib/site-builder');
+var Options = require('../lib/options');
+var BuildLogger = require('../lib/build-logger');
+var fileLockedOperation = require('file-locked-operation');
 var fs = require('fs');
 var path = require('path');
 var chai = require('chai');
@@ -7,10 +11,6 @@ var chaiAsPromised = require('chai-as-promised');
 var sinon = require('sinon');
 var childProcess = require('child_process');
 var mockSpawn = require('mock-spawn');
-var Options = require('../lib/options');
-var siteBuilder = require('../lib/site-builder');
-var BuildLogger = require('../lib/build-logger');
-var fileLockedOperation = require('file-locked-operation');
 
 var FilesHelper = require('./files-helper');
 var OrigConfig = require('../pages-config.json');
@@ -32,13 +32,16 @@ describe('SiteBuilder', function() {
     config.rsync = 'rsync';
   }
 
-  before(function(done) {
+  before(function() {
     cloneConfig();
     siteBuilder.setConfiguration(config);
-    filesHelper = new FilesHelper(config, done);
+    filesHelper = new FilesHelper();
+    return filesHelper.init(config);
   });
 
-  after(function(done) { filesHelper.after(done); });
+  after(function() {
+    return filesHelper.after();
+  });
 
   beforeEach(function() {
     origSpawn = childProcess.spawn;
@@ -47,13 +50,13 @@ describe('SiteBuilder', function() {
     logger = new BuildLogger('/dev/null');
     logMock = sinon.mock(logger);
     updateLock = new fileLockedOperation.FileLockedOperation(
-      filesHelper.lockfilePath);
+      filesHelper.files.lockfilePath);
     filenameToContents = {};
   });
 
-  afterEach(function(done) {
+  afterEach(function() {
     childProcess.spawn = origSpawn;
-    filesHelper.afterEach(done);
+    return filesHelper.afterEach();
   });
 
   var spawnCalls = function() {
@@ -84,7 +87,7 @@ describe('SiteBuilder', function() {
 
   var makeBuilder = function(opts) {
     if (!opts) { opts = makeOpts(); }
-    opts.sitePath = filesHelper.testRepoDir;
+    opts.sitePath = filesHelper.dirs.testRepoDir;
     return new siteBuilder.SiteBuilder(opts, '18f-pages', logger, updateLock);
   };
 
@@ -107,7 +110,7 @@ describe('SiteBuilder', function() {
     readConfig = function() {
       expect(builder.generatedConfig).to.be.true;
       return new Promise(function(resolve, reject) {
-        fs.readFile(filesHelper.pagesConfig, function(err, data) {
+        fs.readFile(filesHelper.files.pagesConfig, function(err, data) {
           if (err) { reject(err); } else { resolve(data.toString()); }
         });
       });
@@ -146,7 +149,7 @@ describe('SiteBuilder', function() {
           opts;
 
       opts = makeOpts();
-      opts.sitePath = filesHelper.testRepoDir;
+      opts.sitePath = filesHelper.dirs.testRepoDir;
       opts.branchInUrlPattern = 'v[0-9]+.[0-9]+.[0-9]*[a-z]+';
       builder = new siteBuilder.SiteBuilder(
         opts, 'v0.9.x', logger, updateLock);
@@ -228,7 +231,7 @@ describe('SiteBuilder', function() {
     });
 
     logMock.expects('log').withExactArgs(
-      'cloning', 'repo_name', 'into', filesHelper.testRepoDir);
+      'cloning', 'repo_name', 'into', filesHelper.dirs.testRepoDir);
     logMock.expects('log').withExactArgs(
       'generating', config.pagesConfig);
     logMock.expects('log').withExactArgs(
@@ -247,7 +250,7 @@ describe('SiteBuilder', function() {
   it('should report an error if the clone fails', function(done) {
     mySpawn.sequence.add(mySpawn.simple(1));
     logMock.expects('log').withExactArgs(
-      'cloning', 'repo_name', 'into', filesHelper.testRepoDir);
+      'cloning', 'repo_name', 'into', filesHelper.dirs.testRepoDir);
     makeBuilder().build(check(done, function(err) {
       var cloneCommand =
         'git clone git@github.com:18F/repo_name.git --branch 18f-pages';
@@ -287,7 +290,7 @@ describe('SiteBuilder', function() {
       'generating', config.pagesConfig);
     logMock.expects('log').withExactArgs(
       'removing generated', config.pagesConfig);
-    filenameToContents[filesHelper.gemfile] = '';
+    filenameToContents[filesHelper.files.gemfile] = '';
     filesHelper.createRepoWithFiles(filenameToContents, function() {
       makeBuilder().build(check(done, function(err) {
         expect(err).to.be.undefined;
@@ -310,7 +313,7 @@ describe('SiteBuilder', function() {
     mySpawn.sequence.add(mySpawn.simple(0));
     mySpawn.sequence.add(mySpawn.simple(1));
     logMock.expects('log').withExactArgs('syncing repo:', 'repo_name');
-    filenameToContents[filesHelper.gemfile] = '';
+    filenameToContents[filesHelper.files.gemfile] = '';
     filesHelper.createRepoWithFiles(filenameToContents, function() {
       makeBuilder().build(check(done, function(err) {
         var bundleInstallCommand = 'bundle install';
@@ -337,7 +340,7 @@ describe('SiteBuilder', function() {
       'generating', config.pagesConfig);
     logMock.expects('log').withExactArgs(
       'removing generated', config.pagesConfig);
-    filenameToContents[filesHelper.gemfile] = '';
+    filenameToContents[filesHelper.files.gemfile] = '';
     filesHelper.createRepoWithFiles(filenameToContents, function() {
       makeBuilder().build(check(done, function(err) {
         var jekyllBuildCommand =
@@ -361,7 +364,7 @@ describe('SiteBuilder', function() {
     logMock.expects('log').withExactArgs('syncing repo:', 'repo_name');
     logMock.expects('log').withExactArgs(
       'using existing', config.pagesConfig);
-    filenameToContents[filesHelper.pagesConfig] = '';
+    filenameToContents[filesHelper.files.pagesConfig] = '';
     filesHelper.createRepoWithFiles(filenameToContents, function() {
       makeBuilder().build(check(done, function(err) {
         expect(err).to.be.undefined;
@@ -382,7 +385,7 @@ describe('SiteBuilder', function() {
     logMock.expects('log').withExactArgs('syncing repo:', 'repo_name');
     logMock.expects('log').withExactArgs(
       'using existing', config.pagesConfig);
-    filenameToContents[filesHelper.pagesConfig] =
+    filenameToContents[filesHelper.files.pagesConfig] =
       'baseurl:  /new-destination  ';
     filesHelper.createRepoWithFiles(filenameToContents, function() {
       makeBuilder().build(check(done, function(err) {
@@ -402,9 +405,9 @@ describe('SiteBuilder', function() {
   it('should use rsync if _config.yml is not present', function(done) {
     mySpawn.setDefault(mySpawn.simple(0));
     logMock.expects('log').withExactArgs('syncing repo:', 'repo_name');
-    filenameToContents[filesHelper.pagesConfig] = '';
+    filenameToContents[filesHelper.files.pagesConfig] = '';
     filesHelper.createRepoWithFiles(filenameToContents, function() {
-      filesHelper.removeFile(filesHelper.configYml)
+      filesHelper.removeFile(filesHelper.files.configYml)
         .then(function() {
           makeBuilder().build(check(done, function(err) {
             expect(err).to.be.undefined;
@@ -426,7 +429,7 @@ describe('SiteBuilder', function() {
       mySpawn.setDefault(mySpawn.simple(0));
       logMock.expects('log').withExactArgs('syncing repo:', 'repo_name');
 
-      filenameToContents[filesHelper.internalConfig] = '';
+      filenameToContents[filesHelper.files.internalConfig] = '';
       filesHelper.createRepoWithFiles(filenameToContents, function() {
         makeBuilder().build(check(done, function(err) {
           expect(err).to.equal('Error: failed to build a site with a ' +
@@ -444,7 +447,7 @@ describe('SiteBuilder', function() {
       mySpawn.setDefault(mySpawn.simple(0));
       logMock.expects('log').withExactArgs('syncing repo:', 'repo_name');
 
-      filenameToContents[filesHelper.externalConfig] = '';
+      filenameToContents[filesHelper.files.externalConfig] = '';
       filesHelper.createRepoWithFiles(filenameToContents, function() {
         makeBuilder().build(check(done, function(err) {
           expect(err).to.equal('Error: failed to build a site with a ' +
@@ -466,7 +469,7 @@ describe('SiteBuilder', function() {
       logMock.expects('log').withExactArgs(
         'removing generated', config.pagesConfig);
 
-      filenameToContents[filesHelper.internalConfig] = '';
+      filenameToContents[filesHelper.files.internalConfig] = '';
       var opts = makeOpts();
 
       filesHelper.createRepoWithFiles(filenameToContents, function() {
@@ -495,8 +498,8 @@ describe('SiteBuilder', function() {
       logMock.expects('log').withExactArgs(
         'removing generated', config.pagesConfig);
 
-      filenameToContents[filesHelper.internalConfig] = '';
-      filenameToContents[filesHelper.externalConfig] = '';
+      filenameToContents[filesHelper.files.internalConfig] = '';
+      filenameToContents[filesHelper.files.externalConfig] = '';
       var opts = makeOpts();
 
       filesHelper.createRepoWithFiles(filenameToContents, function() {
@@ -527,13 +530,13 @@ describe('SiteBuilder', function() {
       logMock.expects('log').withExactArgs(
         'removing generated', config.pagesConfig);
 
-      filenameToContents[filesHelper.gemfile] = '';
+      filenameToContents[filesHelper.files.gemfile] = '';
       filesHelper.createRepoWithFiles(filenameToContents, function() {
         var opts = makeOpts(),
             builder;
 
         opts.branchInUrlPattern = 'v[0-9]+.[0-9]+.[0-9]*[a-z]+';
-        opts.sitePath = filesHelper.testRepoDir;
+        opts.sitePath = filesHelper.dirs.testRepoDir;
         builder = new siteBuilder.SiteBuilder(
           opts, 'v0.9.x', logger, updateLock);
 
@@ -577,18 +580,18 @@ describe('SiteBuilder', function() {
 
       builderConfig = {
         'branch': '18f-pages',
-        'repositoryDir': path.join(filesHelper.testRepoDir, 'repo_dir'),
-        'generatedSiteDir': path.join(filesHelper.testRepoDir, 'dest_dir')
+        'repositoryDir': path.join(filesHelper.dirs.testRepoDir, 'repo_dir'),
+        'generatedSiteDir': path.join(filesHelper.dirs.testRepoDir, 'dest_dir')
       };
 
-      cloneDir = path.join(filesHelper.testRepoDir, 'repo_dir', 'foo');
-      outputDir = path.join(filesHelper.testRepoDir, 'dest_dir', 'foo');
+      cloneDir = path.join(filesHelper.dirs.testRepoDir, 'repo_dir', 'foo');
+      outputDir = path.join(filesHelper.dirs.testRepoDir, 'dest_dir', 'foo');
       buildLog = path.join(outputDir, 'build.log');
     });
 
     beforeEach(function(done) {
       webhook = { on: sinon.spy() };
-      fs.mkdir(filesHelper.testRepoDir, function(err) {
+      fs.mkdir(filesHelper.dirs.testRepoDir, function(err) {
         if (err) { return done(err); }
         fs.mkdir(builderConfig.repositoryDir, function(err) {
           if (err) { return done(err); }

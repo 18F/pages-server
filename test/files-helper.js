@@ -2,90 +2,132 @@
 
 var fs = require('fs');
 var path = require('path');
+var temp = require('temp');
+var scriptName = require('../package.json').name;
 
 module.exports = FilesHelper;
 
-function FilesHelper(config, done) {
-  this.testRepoDir = path.resolve(__dirname, 'site_builder_test');
-  this.gemfile = path.resolve(this.testRepoDir, 'Gemfile');
-  this.pagesConfig = path.resolve(this.testRepoDir, config.pagesConfig);
-  this.configYml = path.resolve(this.testRepoDir, '_config.yml');
-  this.internalConfig = path.resolve(this.testRepoDir, '_config_internal.yml');
-  this.externalConfig = path.resolve(this.testRepoDir, '_config_external.yml');
-  this.filesToDelete = [];
-  this.lockDir = path.resolve(__dirname, 'site_builder_test_lock_dir');
-  this.lockfilePath = path.resolve(this.lockDir, '.update-lock-repo_name');
-  fs.mkdir(this.lockDir, '0700', done);
+function FilesHelper() {
 }
 
-FilesHelper.prototype.afterEach = function(done) {
-  var that = this;
-  var removePromise = this.removeFile(this.configYml);
+FilesHelper.prototype.init = function(config) {
+  var helper = this;
 
-  this.filesToDelete.map(function(fileToDelete) {
-    removePromise = removePromise
-      .then(function() { return that.removeFile(fileToDelete); });
+  return new Promise(function(resolve, reject) {
+    temp.mkdir(scriptName + '-test-files-', function(err, tempDir) {
+      var testRepoDir = path.resolve(tempDir, 'site_builder_test'),
+          lockDir = path.resolve(tempDir, 'site_builder_test_lock_dir');
+
+      if (err) {
+        return reject(err);
+      }
+
+      fs.mkdir(lockDir, '0700', function(err) {
+        if (err) {
+          return reject(err);
+        }
+        initHelper(helper, config, tempDir, testRepoDir, lockDir);
+        resolve();
+      });
+    });
   });
-  this.filesToDelete = [];
-
-  removePromise = removePromise
-    .then(function() { return that.removeRepoDir(); })
-    .then(done, done);
 };
 
-FilesHelper.prototype.after = function(done) { fs.rmdir(this.lockDir, done); };
+function initHelper(helper, config, tempDir, testRepoDir, lockDir) {
+  helper.dirs = {
+    testRepoDir: testRepoDir,
+    lockDir: lockDir,
+    tempDir: tempDir
+  };
+
+  helper.files = {
+    gemfile: path.resolve(testRepoDir, 'Gemfile'),
+    pagesConfig: path.resolve(testRepoDir, config.pagesConfig),
+    configYml: path.resolve(testRepoDir, '_config.yml'),
+    internalConfig: path.resolve(testRepoDir, '_config_internal.yml'),
+    externalConfig: path.resolve(testRepoDir, '_config_external.yml'),
+    lockfilePath: path.resolve(lockDir, '.update-lock-repo_name')
+  };
+
+  helper.filesToDelete = [];
+}
+
+FilesHelper.prototype.afterEach = function() {
+  var helper = this,
+      files = helper.filesToDelete.slice();
+
+  helper.filesToDelete = [];
+  files = files.concat(Object.keys(helper.files).map(function(key) {
+    return helper.files[key];
+  }));
+
+  return removeItems(files, 'unlink')
+    .then(function() {
+      return helper.removeDir(helper.dirs.testRepoDir);
+    });
+};
+
+FilesHelper.prototype.after = function() {
+  return removeItems([this.dirs.lockDir, this.dirs.tempDir], 'rmdir');
+};
 
 FilesHelper.prototype.createRepoDir = function(done) {
-  var that = this;
-  fs.mkdir(this.testRepoDir, '0700', function() {
-    fs.writeFile(that.configYml, '', done);
+  var helper = this;
+  fs.mkdir(this.dirs.testRepoDir, '0700', function() {
+    fs.writeFile(helper.files.configYml, '', done);
   });
 };
 
 FilesHelper.prototype.createRepoWithFiles = function(nameToContents, done) {
-  this.filesToDelete = [];
-  for (var name in nameToContents) {
-    if (nameToContents.hasOwnProperty(name)) {
-      this.filesToDelete.push(name);
-    }
-  }
+  var helper = this,
+      filesRemaining,
+      allDone;
 
-  var that = this;
-  var filesRemaining = this.filesToDelete.length;
-  var allDone = function() {
+  this.filesToDelete = Object.keys(nameToContents);
+  filesRemaining = this.filesToDelete.length,
+  allDone = function() {
     filesRemaining--;
     if (filesRemaining === 0) { done(); }
   };
 
   this.createRepoDir(function() {
-    that.filesToDelete.map(function(name) {
+    helper.filesToDelete.map(function(name) {
       fs.writeFile(name, nameToContents[name], allDone);
     });
   });
 };
 
 FilesHelper.prototype.removeFile = function(filename) {
-  if (!filename) { return Promise.resolve(); }
-  return new Promise(function(resolve, reject) {
-    fs.exists(filename, function(exists) {
-      if (exists) {
-        fs.unlink(filename, function(err) {
-          if (err) { reject(err); } else { resolve(); }
-        });
-      }
-      resolve();
-    });
-  });
+  return removeItem(filename, 'unlink');
 };
 
-FilesHelper.prototype.removeRepoDir = function() {
-  var that = this;
+FilesHelper.prototype.removeDir = function(dirname) {
+  return removeItem(dirname, 'rmdir');
+};
+
+function removeItems(items, operation) {
+  var remover;
+
+  remover = function(result, item) {
+    return result.then(function() {
+      return removeItem(item, operation);
+    });
+  };
+  return items.reduce(remover, Promise.resolve());
+}
+
+function removeItem(name, operation) {
   return new Promise(function(resolve, reject) {
-    fs.exists(that.testRepoDir, function(exists) {
-      if (!exists) { return resolve(); }
-      fs.rmdir(that.testRepoDir, function(err) {
-        if (err) { reject(err); } else { resolve(); }
+    fs.exists(name, function(exists) {
+      if (!exists) {
+        return resolve();
+      }
+      fs[operation](name, function(err) {
+        if (err) {
+          return reject(err);
+        }
+        resolve();
       });
     });
   });
-};
+}
