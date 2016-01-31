@@ -49,7 +49,7 @@ describe('SiteBuilder', function() {
     origSpawn = childProcess.spawn;
     mySpawn = mockSpawn();
     childProcess.spawn = mySpawn;
-    logger = new BuildLogger('/dev/null');
+    logger = new BuildLogger();
     logMock = sinon.mock(logger);
     updateLock = new FileLockedOperation(filesHelper.files.lockfilePath);
     filenameToContents = {};
