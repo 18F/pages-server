@@ -1,7 +1,7 @@
 'use strict';
 
 var hookshot = require('hookshot');
-var siteBuilder = require('./lib/site-builder');
+var SiteBuilder = require('./lib/site-builder');
 var packageInfo = require('./package.json');
 var webhookValidator = require('github-webhook-validator');
 
@@ -12,7 +12,7 @@ exports.versionString = function() {
 };
 
 exports.launchServer = function(config) {
-  siteBuilder.setConfiguration(config);
+  SiteBuilder.setConfiguration(config);
   return webhookValidator.loadKeyDictionary(
     config.secretKeyFile, config.builders)
     .then(function(keyDictionary) {
@@ -34,7 +34,7 @@ function doLaunch(config, keyDictionary) {
 
   var numBuilders = config.builders.length;
   for (var i = 0; i != numBuilders; i++) {
-    siteBuilder.makeBuilderListener(webhook, config.builders[i]);
+    SiteBuilder.makeBuilderListener(webhook, config.builders[i]);
   }
 
   console.log(exports.versionString());
