@@ -105,11 +105,7 @@ describe('SiteBuilder', function() {
     var inRepoDir, writeConfig, readConfig, checkResults;
 
     inRepoDir = function() {
-      return new Promise(function(resolve, reject) {
-        filesHelper.createRepoDir(function(err) {
-          if (err) { reject(err); } else { resolve(); }
-        });
-      });
+      return filesHelper.createRepoDir();
     };
 
     writeConfig = function() {
@@ -244,7 +240,10 @@ describe('SiteBuilder', function() {
   it('should clone the repo if the directory does not exist', function(done) {
     mySpawn.setDefault(mySpawn.simple(0));
     mySpawn.sequence.add(function(done) {
-      filesHelper.createRepoDir(function() { done(0); });
+      filesHelper.createRepoDir()
+        .then(function() {
+          done(0);
+        });
     });
 
     logMock.expects('log').withExactArgs(
@@ -285,19 +284,20 @@ describe('SiteBuilder', function() {
       'generating', config.pagesConfig);
     logMock.expects('log').withExactArgs(
       'removing generated', config.pagesConfig);
-    filesHelper.createRepoDir(function() {
-      makeBuilder().build(check(done, function(err) {
-        expect(err).to.be.undefined;
-        expect(spawnCalls()).to.eql([
-          'git stash',
-          'git pull',
-          'git submodule update --init',
-          'jekyll build --trace --destination dest_dir/repo_name ' +
-            '--config _config.yml,_config_18f_pages.yml'
-        ]);
-        logMock.verify();
-      }));
-    });
+    filesHelper.createRepoDir()
+      .then(function() {
+        makeBuilder().build(check(done, function(err) {
+          expect(err).to.be.undefined;
+          expect(spawnCalls()).to.eql([
+            'git stash',
+            'git pull',
+            'git submodule update --init',
+            'jekyll build --trace --destination dest_dir/repo_name ' +
+              '--config _config.yml,_config_18f_pages.yml'
+          ]);
+          logMock.verify();
+        }));
+      });
   });
 
   it ('should use bundler if a Gemfile is present', function(done) {
@@ -308,20 +308,21 @@ describe('SiteBuilder', function() {
     logMock.expects('log').withExactArgs(
       'removing generated', config.pagesConfig);
     filenameToContents[filesHelper.files.gemfile] = '';
-    filesHelper.createRepoWithFiles(filenameToContents, function() {
-      makeBuilder().build(check(done, function(err) {
-        expect(err).to.be.undefined;
-        expect(spawnCalls()).to.eql([
-          'git stash',
-          'git pull',
-          'git submodule update --init',
-          'bundle install',
-          'bundle exec jekyll build --trace --destination dest_dir/repo_name ' +
-            '--config _config.yml,_config_18f_pages.yml'
-        ]);
-        logMock.verify();
-      }));
-    });
+    filesHelper.createRepoWithFiles(filenameToContents)
+      .then(function() {
+        makeBuilder().build(check(done, function(err) {
+          expect(err).to.be.undefined;
+          expect(spawnCalls()).to.eql([
+            'git stash',
+            'git pull',
+            'git submodule update --init',
+            'bundle install',
+            'bundle exec jekyll build --trace --destination ' +
+              'dest_dir/repo_name --config _config.yml,_config_18f_pages.yml'
+          ]);
+          logMock.verify();
+        }));
+      });
   });
 
   it ('should fail if bundle install fails', function(done) {
@@ -331,19 +332,20 @@ describe('SiteBuilder', function() {
     mySpawn.sequence.add(mySpawn.simple(1));
     logMock.expects('log').withExactArgs('syncing repo:', 'repo_name');
     filenameToContents[filesHelper.files.gemfile] = '';
-    filesHelper.createRepoWithFiles(filenameToContents, function() {
-      makeBuilder().build(check(done, function(err) {
-        var bundleInstallCommand = 'bundle install';
-        expect(err).to.equal('Error: rebuild failed for repo_name with ' +
-          'exit code 1 from command: ' + bundleInstallCommand);
-        expect(spawnCalls()).to.eql([
-          'git stash',
-          'git pull',
-          'git submodule update --init',
-          bundleInstallCommand]);
-        logMock.verify();
-      }));
-    });
+    filesHelper.createRepoWithFiles(filenameToContents)
+      .then(function() {
+        makeBuilder().build(check(done, function(err) {
+          var bundleInstallCommand = 'bundle install';
+          expect(err).to.equal('Error: rebuild failed for repo_name with ' +
+            'exit code 1 from command: ' + bundleInstallCommand);
+          expect(spawnCalls()).to.eql([
+            'git stash',
+            'git pull',
+            'git submodule update --init',
+            bundleInstallCommand]);
+          logMock.verify();
+        }));
+      });
   });
 
   it ('should fail if jekyll build fails', function(done) {
@@ -358,22 +360,23 @@ describe('SiteBuilder', function() {
     logMock.expects('log').withExactArgs(
       'removing generated', config.pagesConfig);
     filenameToContents[filesHelper.files.gemfile] = '';
-    filesHelper.createRepoWithFiles(filenameToContents, function() {
-      makeBuilder().build(check(done, function(err) {
-        var jekyllBuildCommand =
-          'bundle exec jekyll build --trace --destination dest_dir/repo_name ' +
-            '--config _config.yml,_config_18f_pages.yml';
-        expect(err).to.equal('Error: rebuild failed for repo_name with ' +
-          'exit code 1 from command: ' + jekyllBuildCommand);
-        expect(spawnCalls()).to.eql([
-          'git stash',
-          'git pull',
-          'git submodule update --init',
-          'bundle install',
-          jekyllBuildCommand]);
-        logMock.verify();
-      }));
-    });
+    filesHelper.createRepoWithFiles(filenameToContents)
+      .then(function() {
+        makeBuilder().build(check(done, function(err) {
+          var jekyllBuildCommand =
+            'bundle exec jekyll build --trace --destination ' +
+              'dest_dir/repo_name --config _config.yml,_config_18f_pages.yml';
+          expect(err).to.equal('Error: rebuild failed for repo_name with ' +
+            'exit code 1 from command: ' + jekyllBuildCommand);
+          expect(spawnCalls()).to.eql([
+            'git stash',
+            'git pull',
+            'git submodule update --init',
+            'bundle install',
+            jekyllBuildCommand]);
+          logMock.verify();
+        }));
+      });
   });
 
   it('should use existing _config_18f_pages.yml if present', function(done) {
@@ -382,19 +385,20 @@ describe('SiteBuilder', function() {
     logMock.expects('log').withExactArgs(
       'using existing', config.pagesConfig);
     filenameToContents[filesHelper.files.pagesConfig] = '';
-    filesHelper.createRepoWithFiles(filenameToContents, function() {
-      makeBuilder().build(check(done, function(err) {
-        expect(err).to.be.undefined;
-        expect(spawnCalls()).to.eql([
-          'git stash',
-          'git pull',
-          'git submodule update --init',
-          'jekyll build --trace --destination dest_dir/repo_name ' +
-            '--config _config.yml,_config_18f_pages.yml'
-        ]);
-        logMock.verify();
-      }));
-    });
+    filesHelper.createRepoWithFiles(filenameToContents)
+      .then(function() {
+        makeBuilder().build(check(done, function(err) {
+          expect(err).to.be.undefined;
+          expect(spawnCalls()).to.eql([
+            'git stash',
+            'git pull',
+            'git submodule update --init',
+            'jekyll build --trace --destination dest_dir/repo_name ' +
+              '--config _config.yml,_config_18f_pages.yml'
+          ]);
+          logMock.verify();
+        }));
+      });
   });
 
   it('should use baseurl from _config_18f_pages.yml as dest', function(done) {
@@ -404,41 +408,43 @@ describe('SiteBuilder', function() {
       'using existing', config.pagesConfig);
     filenameToContents[filesHelper.files.pagesConfig] =
       'baseurl:  /new-destination  ';
-    filesHelper.createRepoWithFiles(filenameToContents, function() {
-      makeBuilder().build(check(done, function(err) {
-        expect(err).to.be.undefined;
-        expect(spawnCalls()).to.eql([
-          'git stash',
-          'git pull',
-          'git submodule update --init',
-          'jekyll build --trace --destination dest_dir/new-destination ' +
-            '--config _config.yml,_config_18f_pages.yml'
-        ]);
-        logMock.verify();
-      }));
-    });
+    filesHelper.createRepoWithFiles(filenameToContents)
+      .then(function() {
+        makeBuilder().build(check(done, function(err) {
+          expect(err).to.be.undefined;
+          expect(spawnCalls()).to.eql([
+            'git stash',
+            'git pull',
+            'git submodule update --init',
+            'jekyll build --trace --destination dest_dir/new-destination ' +
+              '--config _config.yml,_config_18f_pages.yml'
+          ]);
+          logMock.verify();
+        }));
+      });
   });
 
   it('should use rsync if _config.yml is not present', function(done) {
     mySpawn.setDefault(mySpawn.simple(0));
     logMock.expects('log').withExactArgs('syncing repo:', 'repo_name');
     filenameToContents[filesHelper.files.pagesConfig] = '';
-    filesHelper.createRepoWithFiles(filenameToContents, function() {
-      filesHelper.removeFile(filesHelper.files.configYml)
-        .then(function() {
-          makeBuilder().build(check(done, function(err) {
-            expect(err).to.be.undefined;
-            expect(spawnCalls()).to.eql([
-              'git stash',
-              'git pull',
-              'git submodule update --init',
-              'rsync -vaxp --delete --ignore-errors --exclude=.[A-Za-z0-9]* ' +
-                './ dest_dir/repo_name'
-            ]);
-            logMock.verify();
-          }));
-        });
-    });
+    filesHelper.createRepoWithFiles(filenameToContents)
+      .then(function() {
+        return filesHelper.removeFile(filesHelper.files.configYml);
+      })
+      .then(function() {
+        makeBuilder().build(check(done, function(err) {
+          expect(err).to.be.undefined;
+          expect(spawnCalls()).to.eql([
+            'git stash',
+            'git pull',
+            'git submodule update --init',
+            'rsync -vaxp --delete --ignore-errors --exclude=.[A-Za-z0-9]* ' +
+              './ dest_dir/repo_name'
+          ]);
+          logMock.verify();
+        }));
+      });
   });
 
   describe('internal publishing mechanism', function() {
@@ -447,17 +453,18 @@ describe('SiteBuilder', function() {
       logMock.expects('log').withExactArgs('syncing repo:', 'repo_name');
 
       filenameToContents[filesHelper.files.internalConfig] = '';
-      filesHelper.createRepoWithFiles(filenameToContents, function() {
-        makeBuilder().build(check(done, function(err) {
-          expect(err).to.equal('Error: failed to build a site with a ' +
-            '_config_internal.yml file without an internalSiteDir defined ' +
-            'in the builder configuration');
-          expect(spawnCalls()).to.eql([
-            'git stash', 'git pull', 'git submodule update --init'
-          ]);
-          logMock.verify();
-        }));
-      });
+      filesHelper.createRepoWithFiles(filenameToContents)
+        .then(function() {
+          makeBuilder().build(check(done, function(err) {
+            expect(err).to.equal('Error: failed to build a site with a ' +
+              '_config_internal.yml file without an internalSiteDir defined ' +
+              'in the builder configuration');
+            expect(spawnCalls()).to.eql([
+              'git stash', 'git pull', 'git submodule update --init'
+            ]);
+            logMock.verify();
+          }));
+        });
     });
 
     it('should error if external config without internal conf', function(done) {
@@ -465,17 +472,18 @@ describe('SiteBuilder', function() {
       logMock.expects('log').withExactArgs('syncing repo:', 'repo_name');
 
       filenameToContents[filesHelper.files.externalConfig] = '';
-      filesHelper.createRepoWithFiles(filenameToContents, function() {
-        makeBuilder().build(check(done, function(err) {
-          expect(err).to.equal('Error: failed to build a site with a ' +
-            '_config_external.yml file without a corresponding ' +
-            '_config_internal.yml file');
-          expect(spawnCalls()).to.eql([
-            'git stash', 'git pull', 'git submodule update --init'
-          ]);
-          logMock.verify();
-        }));
-      });
+      filesHelper.createRepoWithFiles(filenameToContents)
+        .then(function() {
+          makeBuilder().build(check(done, function(err) {
+            expect(err).to.equal('Error: failed to build a site with a ' +
+              '_config_external.yml file without a corresponding ' +
+              '_config_internal.yml file');
+            expect(spawnCalls()).to.eql([
+              'git stash', 'git pull', 'git submodule update --init'
+            ]);
+            logMock.verify();
+          }));
+        });
     });
 
     it('should publish with internal config only', function(done) {
@@ -489,22 +497,25 @@ describe('SiteBuilder', function() {
       filenameToContents[filesHelper.files.internalConfig] = '';
       var opts = makeOpts();
 
-      filesHelper.createRepoWithFiles(filenameToContents, function() {
-        opts.internalDestDir = 'internal_dest_dir';
-        makeBuilder(opts).build(check(done, function(err) {
-          expect(err).to.be.undefined;
-          expect(spawnCalls()).to.eql([
-            'git stash',
-            'git pull',
-            'git submodule update --init',
-            'jekyll build --trace --destination internal_dest_dir/repo_name ' +
-              '--config _config.yml,_config_internal.yml,_config_18f_pages.yml',
-            'jekyll build --trace --destination dest_dir/repo_name ' +
-              '--config _config.yml,_config_18f_pages.yml'
-          ]);
-          logMock.verify();
-        }));
-      });
+      filesHelper.createRepoWithFiles(filenameToContents)
+        .then(function() {
+          opts.internalDestDir = 'internal_dest_dir';
+          makeBuilder(opts).build(check(done, function(err) {
+            expect(err).to.be.undefined;
+            expect(spawnCalls()).to.eql([
+              'git stash',
+              'git pull',
+              'git submodule update --init',
+              'jekyll build --trace --destination ' +
+                'internal_dest_dir/repo_name ' +
+                '--config _config.yml,_config_internal.yml,' +
+                '_config_18f_pages.yml',
+              'jekyll build --trace --destination dest_dir/repo_name ' +
+                '--config _config.yml,_config_18f_pages.yml'
+            ]);
+            logMock.verify();
+          }));
+        });
     });
 
     it('should publish with internal and external configs', function(done) {
@@ -519,22 +530,26 @@ describe('SiteBuilder', function() {
       filenameToContents[filesHelper.files.externalConfig] = '';
       var opts = makeOpts();
 
-      filesHelper.createRepoWithFiles(filenameToContents, function() {
-        opts.internalDestDir = 'internal_dest_dir';
-        makeBuilder(opts).build(check(done, function(err) {
-          expect(err).to.be.undefined;
-          expect(spawnCalls()).to.eql([
-            'git stash',
-            'git pull',
-            'git submodule update --init',
-            'jekyll build --trace --destination internal_dest_dir/repo_name ' +
-              '--config _config.yml,_config_internal.yml,_config_18f_pages.yml',
-            'jekyll build --trace --destination dest_dir/repo_name ' +
-              '--config _config.yml,_config_external.yml,_config_18f_pages.yml'
-          ]);
-          logMock.verify();
-        }));
-      });
+      filesHelper.createRepoWithFiles(filenameToContents)
+        .then(function() {
+          opts.internalDestDir = 'internal_dest_dir';
+          makeBuilder(opts).build(check(done, function(err) {
+            expect(err).to.be.undefined;
+            expect(spawnCalls()).to.eql([
+              'git stash',
+              'git pull',
+              'git submodule update --init',
+              'jekyll build --trace --destination ' +
+                'internal_dest_dir/repo_name ' +
+                '--config _config.yml,_config_internal.yml,' +
+                '_config_18f_pages.yml',
+              'jekyll build --trace --destination dest_dir/repo_name ' +
+                '--config _config.yml,_config_external.yml,' +
+                '_config_18f_pages.yml'
+            ]);
+            logMock.verify();
+          }));
+        });
     });
   });
 
@@ -548,28 +563,26 @@ describe('SiteBuilder', function() {
         'removing generated', config.pagesConfig);
 
       filenameToContents[filesHelper.files.gemfile] = '';
-      filesHelper.createRepoWithFiles(filenameToContents, function() {
-        var opts = makeOpts(),
-            builder;
+      filesHelper.createRepoWithFiles(filenameToContents)
+        .then(function() {
+          var opts = makeOpts();
 
-        opts.branchInUrlPattern = 'v[0-9]+.[0-9]+.[0-9]*[a-z]+';
-        opts.sitePath = filesHelper.dirs.testRepoDir;
-        builder = makeBuilder(opts, 'v0.9.x');
-
-        builder.build(check(done, function(err) {
-          expect(err).to.be.undefined;
-          expect(spawnCalls()).to.eql([
-            'git stash',
-            'git pull',
-            'git submodule update --init',
-            'bundle install',
-            'bundle exec jekyll build --trace ' +
-              '--destination dest_dir/repo_name/v0.9.x ' +
-              '--config _config.yml,_config_18f_pages.yml'
-          ]);
-          logMock.verify();
-        }));
-      });
+          opts.branchInUrlPattern = 'v[0-9]+.[0-9]+.[0-9]*[a-z]+';
+          opts.sitePath = filesHelper.dirs.testRepoDir;
+          makeBuilder(opts, 'v0.9.x').build(check(done, function(err) {
+            expect(err).to.be.undefined;
+            expect(spawnCalls()).to.eql([
+              'git stash',
+              'git pull',
+              'git submodule update --init',
+              'bundle install',
+              'bundle exec jekyll build --trace ' +
+                '--destination dest_dir/repo_name/v0.9.x ' +
+                '--config _config.yml,_config_18f_pages.yml'
+            ]);
+            logMock.verify();
+          }));
+        });
     });
   });
 

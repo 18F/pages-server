@@ -71,30 +71,44 @@ FilesHelper.prototype.after = function() {
   return removeItems([this.dirs.lockDir, this.dirs.tempDir], 'rmdir');
 };
 
-FilesHelper.prototype.createRepoDir = function(done) {
+FilesHelper.prototype.createRepoDir = function() {
   var helper = this;
-  fs.mkdir(this.dirs.testRepoDir, '0700', function() {
-    fs.writeFile(helper.files.configYml, '', done);
+
+  return new Promise(function(resolve, reject) {
+    fs.mkdir(helper.dirs.testRepoDir, '0700', function(err) {
+      if (err) {
+        return reject(err);
+      }
+      fs.writeFile(helper.files.configYml, '', function(err) {
+        if (err) {
+          return reject(err);
+        }
+        resolve();
+      });
+    });
   });
 };
 
-FilesHelper.prototype.createRepoWithFiles = function(nameToContents, done) {
+FilesHelper.prototype.createRepoWithFiles = function(nameToContents) {
   var helper = this,
-      filesRemaining,
-      allDone;
+      writeFile;
 
   this.filesToDelete = Object.keys(nameToContents);
-  filesRemaining = this.filesToDelete.length,
-  allDone = function() {
-    filesRemaining--;
-    if (filesRemaining === 0) { done(); }
+  writeFile = function(filename) {
+    return new Promise(function(resolve, reject) {
+      fs.writeFile(filename, nameToContents[filename], function(err) {
+        if (err) {
+          return reject(err);
+        }
+        resolve();
+      });
+    });
   };
 
-  this.createRepoDir(function() {
-    helper.filesToDelete.map(function(name) {
-      fs.writeFile(name, nameToContents[name], allDone);
+  return this.createRepoDir()
+    .then(function() {
+      return Promise.all(helper.filesToDelete.map(writeFile));
     });
-  });
 };
 
 FilesHelper.prototype.removeFile = function(filename) {
