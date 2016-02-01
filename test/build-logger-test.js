@@ -4,8 +4,7 @@ var path = require('path');
 var fs = require('fs');
 var chai = require('chai');
 var sinon = require('sinon');
-var buildLogger = require(
-  path.resolve(path.dirname(__dirname), 'lib', 'build-logger.js'));
+var BuildLogger = require('../lib/build-logger.js');
 
 var expect = chai.expect;
 chai.should();
@@ -37,7 +36,7 @@ describe('BuildLogger', function() {
   });
 
   var makeLogger = function(done) {
-    return new buildLogger.BuildLogger(logFilePath, done);
+    return new BuildLogger(logFilePath, done);
   };
 
   var captureLogs = function() {
