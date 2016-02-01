@@ -1,16 +1,15 @@
 'use strict';
 
+var BuildLogger = require('../lib/build-logger.js');
 var path = require('path');
 var fs = require('fs');
-var chai = require('chai');
 var sinon = require('sinon');
-var BuildLogger = require('../lib/build-logger.js');
+var chai = require('chai');
 
-var expect = chai.expect;
 chai.should();
 
 describe('BuildLogger', function() {
-  var logger, logFileDir, logFilePath;
+  var logger, logFileDir, logFilePath, captureConsole, checkAndRestoreConsole;
 
   before(function() {
     logFileDir = path.resolve(__dirname, 'buildLogger_test');
@@ -35,84 +34,40 @@ describe('BuildLogger', function() {
     });
   });
 
-  var makeLogger = function(done) {
-    return new BuildLogger(logFilePath, done);
+  captureConsole = function() {
+    sinon.stub(console, 'log');
+    sinon.stub(console, 'error');
   };
 
-  var captureLogs = function() {
-    sinon.stub(console, 'log').returns(null);
-    sinon.stub(console, 'error').returns(null);
-  };
+  checkAndRestoreConsole = function(done, validate) {
+    return function() {
+      var err;
 
-  var restoreLogs = function() {
-    console.error.restore();
-    console.log.restore();
-  };
-
-  var checkN = function(n, done, cb) {
-    return function(err) {
-      if (--n === 0) {
-        try {
-          cb(err);
-          restoreLogs();
-          done();
-        } catch (e) {
-          restoreLogs();
-          done(e);
-        }
+      try {
+        validate();
+      } catch (e) {
+        err = e;
+      } finally {
+        console.error.restore();
+        console.log.restore();
+        done(err);
       }
     };
   };
 
-  it ('should fail if the file cannot be written to', function(done) {
-    logger = makeLogger(checkN(2, done, function() {
-      // I expected the following to succeed, since the failing call happens
-      // after the successful call:
-      //
-      // expect(err).to.equal(expectedError);
-      //
-      // But here's the thing: It takes longer to flush the first, successful
-      // call than it does to change the file permission and make the second 
-      // call fail.
-      expect(console.log.called).to.be.true;
-      expect(console.log.args[0].join(' '))
-        .to.equal('This should be logged to the file');
-      expect(fs.readFileSync(logFilePath).toString())
-        .to.equal('This should be logged to the file\n');
-      expect(console.log.args[1].join(' '))
-        .to.equal('This should not be logged to the file');
-      expect(console.error.called).to.be.true;
-      expect(console.error.args[0].join(' ')).to.match(
-        /^Error: failed to append to log file .*: Error: EACCES/);
-    }));
-
-    captureLogs();
-    logger.log('This should be logged to the file');
-
-    fs.chmod(logFilePath, '400', function(err) {
-      if (err) {
-        done(err);
-        return;
-      }
-      logger.log('This should not be logged to the file');
-    });
-  });
-
   it('should log everything to the file', function(done) {
-    logger = makeLogger(checkN(2, done, function(err) {
-      expect(err).to.be.null;
-      expect(console.log.called).to.be.true;
-      expect(console.log.args[0].join(' '))
-        .to.equal('This should be logged to the file');
-      expect(console.error.called).to.be.true;
-      expect(console.error.args[0].join(' '))
-        .to.equal('This should also be logged to the file');
-      expect(fs.readFileSync(logFilePath).toString())
-        .to.equal('This should be logged to the file\n' +
-          'This should also be logged to the file\n');
+    logger = new BuildLogger(logFilePath);
+    captureConsole();
+    logger.log('This', 'should', 'be', 'logged', 'to', 'the', 'file');
+    logger.error('This', 'should', 'also', 'be', 'logged', 'to', 'the', 'file');
+    logger.close(checkAndRestoreConsole(done, function() {
+      console.log.args.should.eql(
+        [['This', 'should', 'be', 'logged', 'to', 'the', 'file']]);
+      console.error.args.should.eql(
+        [['This', 'should', 'also', 'be', 'logged', 'to', 'the', 'file']]);
+      fs.readFileSync(logFilePath).toString().should.eql(
+        'This should be logged to the file\n' +
+        'This should also be logged to the file\n');
     }));
-    captureLogs();
-    logger.log('This should be logged to the file');
-    logger.error('This should also be logged to the file');
   });
 });

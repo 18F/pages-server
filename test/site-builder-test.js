@@ -21,7 +21,7 @@ chai.use(chaiAsPromised);
 
 describe('SiteBuilder', function() {
   var builder, config, origSpawn, mySpawn, logger, logMock;
-  var filesHelper, updateLock, filenameToContents;
+  var filesHelper, updateLock, filenameToContents, expectLogMessages;
 
   function cloneConfig() {
     config = JSON.parse(JSON.stringify(OrigConfig));
@@ -127,6 +127,14 @@ describe('SiteBuilder', function() {
           buildDone();
         });
       };
+    };
+
+    expectLogMessages = function(consoleArgs, expected) {
+      var consoleMessages = consoleArgs.map(function(arg) {
+        return arg.join(' ');
+      });
+
+      expect(consoleMessages).to.eql(expected);
     };
 
     it('should write the expected configuration', function(done) {
@@ -640,22 +648,24 @@ describe('SiteBuilder', function() {
 
     it('should create a builder that builds the site', function(done) {
       var checkResult = check(done, function(err) {
-        var logMsgs = console.log.args;
-        var errorMsgs = console.error.args;
+        var logMsgs = console.log.args,
+            errorMsgs = console.error.args,
+            expectedMessages = [
+              '18F/foo: starting build at commit deadbeef',
+              'description: Build me',
+              'timestamp: 2015-09-25',
+              'committer: michael.bland@gsa.gov',
+              'pusher: Mike Bland michael.bland@gsa.gov',
+              'sender: mbland',
+              'cloning foo into ' + cloneDir,
+              'foo: build successful'
+            ],
+            expectedLog = expectedMessages.join('\n') + '\n';
+
         restoreLogs();
         expect(err).to.be.null;
-        expect(logMsgs).to.eql([
-          ['18F/foo: starting build at commit deadbeef'],
-          ['description: Build me'],
-          ['timestamp: 2015-09-25'],
-          ['committer: michael.bland@gsa.gov'],
-          ['pusher: Mike Bland michael.bland@gsa.gov'],
-          ['sender: mbland'],
-          ['cloning foo into ' + cloneDir],
-          ['foo: build successful']
-        ]);
+        expectLogMessages(logMsgs, expectedMessages);
         expect(errorMsgs).to.be.empty;
-        var expectedLog = logMsgs.join('\n') + '\n';
         expect(fs.readFileSync(buildLog, 'utf8')).to.equal(expectedLog);
       });
 
@@ -671,21 +681,23 @@ describe('SiteBuilder', function() {
 
       checkResult = check(done, function(err) {
         var logMsgs = console.log.args,
-            errorMsgs = console.error.args;
+            errorMsgs = console.error.args,
+            expectedMessages = [
+              '18F/foo: starting build at commit deadbeef',
+              'description: Build me',
+              'timestamp: 2015-09-25',
+              'committer: michael.bland@gsa.gov',
+              'pusher: Mike Bland michael.bland@gsa.gov',
+              'sender: mbland',
+              'cloning foo into ' + cloneDir,
+              'foo: build successful'
+            ],
+            expectedLog = expectedMessages.join('\n') + '\n';
+
         restoreLogs();
         expect(err).to.be.null;
-        expect(logMsgs).to.eql([
-          ['18F/foo: starting build at commit deadbeef'],
-          ['description: Build me'],
-          ['timestamp: 2015-09-25'],
-          ['committer: michael.bland@gsa.gov'],
-          ['pusher: Mike Bland michael.bland@gsa.gov'],
-          ['sender: mbland'],
-          ['cloning foo into ' + cloneDir],
-          ['foo: build successful']
-        ]);
+        expectLogMessages(logMsgs, expectedMessages);
         expect(errorMsgs).to.be.empty;
-        var expectedLog = logMsgs.join('\n') + '\n';
         expect(fs.readFileSync(buildLog, 'utf8')).to.equal(expectedLog);
       });
 
@@ -704,25 +716,29 @@ describe('SiteBuilder', function() {
 
     it('should create a builder that fails to build the site', function(done) {
       var checkResult = check(done, function(err) {
-        var logMsgs = console.log.args;
-        var errorMsgs = console.error.args;
+        var logMsgs = console.log.args,
+            errorMsgs = console.error.args,
+            expectedMessages = [
+              '18F/foo: starting build at commit deadbeef',
+              'description: Build me',
+              'timestamp: 2015-09-25',
+              'committer: michael.bland@gsa.gov',
+              'pusher: Mike Bland michael.bland@gsa.gov',
+              'sender: mbland',
+              'cloning foo into ' + cloneDir
+            ],
+            expectedErrors = [
+              'Error: failed to clone foo with exit code 1 from command: ' +
+                'git clone git@github.com:18F/foo.git --branch 18f-pages',
+              'foo: build failed'
+            ],
+            expectedLog = expectedMessages.concat(expectedErrors)
+              .join('\n') + '\n';
+
         restoreLogs();
         expect(err).to.be.null;
-        expect(logMsgs).to.eql([
-          ['18F/foo: starting build at commit deadbeef'],
-          ['description: Build me'],
-          ['timestamp: 2015-09-25'],
-          ['committer: michael.bland@gsa.gov'],
-          ['pusher: Mike Bland michael.bland@gsa.gov'],
-          ['sender: mbland'],
-          ['cloning foo into ' + cloneDir]
-        ]);
-        expect(errorMsgs).to.eql([
-          ['Error: failed to clone foo with exit code 1 from command: ' +
-           'git clone git@github.com:18F/foo.git --branch 18f-pages'],
-          ['foo: build failed']
-        ]);
-        var expectedLog = logMsgs.concat(errorMsgs).join('\n') + '\n';
+        expectLogMessages(logMsgs, expectedMessages);
+        expectLogMessages(errorMsgs, expectedErrors);
         expect(fs.readFileSync(buildLog, 'utf8')).to.equal(expectedLog);
       });
 
