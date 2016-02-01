@@ -21,7 +21,7 @@ RequestHelper.prototype.httpOptions = function(port, payload, secret) {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
-      'Expect': '',
+      'Expect': '100-continue',
       'User-Agent': 'GitHub-Hookshot/9db916b',
       'X-GitHub-Delivery': '01234567-0123-0123-1234-0123456789ab',
       'X-GitHub-Event': 'push',
@@ -68,7 +68,8 @@ RequestHelper.prototype.sendRequest = function(options, payload) {
         if (res.statusCode >= 200 && res.statusCode <= 300) {
           resolve(data);
         } else {
-          reject(new Error(data));
+          reject(new Error(
+            data.length !== 0 ? data : http.STATUS_CODES[res.statusCode]));
         }
       });
     });
