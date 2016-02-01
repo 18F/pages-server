@@ -15,7 +15,7 @@ var USAGE = [
   '  -h, --help, help        show this help',
   '  -v, --version, version  show version info',
   '  print-template          print an example pages-config.json',
-  '  pages-config.json       path to a valid pages-config.json file',
+  '  pages-config.json       path to a valid pages-config.json file'
 ].join('\n');
 
 var showHelp = (option === '-h' || option === '--help' || option === 'help');

@@ -1,6 +1,3 @@
-/* jshint node: true */
-/* jshint expr: true */
-/* jshint mocha: true */
 'use strict';
 
 var pagesServer = require('../index.js');
@@ -32,14 +29,12 @@ var config = {
   'fileLockWaitTime': 30000,
   'fileLockPollTime': 1000,
   'secretKeyFile':    path.join(__dirname, 'data', 'default.secret'),
-  'builders': [
-    {
-      'branch':           '18f-pages',
-      'repositoryDir':    'pages-repos',
-      'generatedSiteDir': 'pages-generated',
-      'secretKeyFile':    path.join(__dirname, 'data', '18f-pages.secret'),
-    }
-  ]
+  'builders': [{
+    'branch':           '18f-pages',
+    'repositoryDir':    'pages-repos',
+    'generatedSiteDir': 'pages-generated',
+    'secretKeyFile':    path.join(__dirname, 'data', '18f-pages.secret')
+  }]
 };
 
 describe('launchServer', function() {

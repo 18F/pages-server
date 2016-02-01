@@ -1,6 +1,3 @@
-/* jshint node: true */
-/* jshint expr: true */
-/* jshint mocha: true */
 'use strict';
 
 var Options = require('../lib/options');
@@ -59,7 +56,7 @@ describe('Options', function() {
       'repositoryDir': 'repo_dir',
       'generatedSiteDir': 'dest_dir',
       'assetRoot': '/foobar-template',
-      'branchInUrlPattern': 'v[0-9\]+.[0-9]+.[0-9]*[a-z]+',
+      'branchInUrlPattern': 'v[0-9\]+.[0-9]+.[0-9]*[a-z]+'
     };
 
     var opts = new Options(info, config, builderConfig);
