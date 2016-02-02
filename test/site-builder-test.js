@@ -128,14 +128,10 @@ describe('SiteBuilder', function() {
 
     checkResults = function(expectedContent) {
       return function(content) {
-        return new Promise(function(resolve, reject) {
-          // Note the done callback wrapper will remove the generated config.
-          var buildDone = builder.generateBuildDone(function(err) {
+        return builder.finishBuild()
+          .then(function() {
             expect(content).to.equal(expectedContent);
-            if (err) { reject(err); } else { resolve(); }
           });
-          buildDone();
-        });
       };
     };
 
