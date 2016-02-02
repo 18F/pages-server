@@ -94,8 +94,7 @@ describe('SiteBuilder', function() {
 
     opts.sitePath = filesHelper.dirs.testRepoDir;
     commandRunner = new CommandRunner(opts.sitePath, opts.repoName);
-    jekyllHelper = new JekyllCommandHelper(commandRunner, opts,
-      config.jekyll, config.bundler);
+    jekyllHelper = new JekyllCommandHelper(config, opts, commandRunner);
     return new SiteBuilder(opts, targetBranch, commandRunner, jekyllHelper,
       logger, updateLock);
   };
