@@ -1,6 +1,6 @@
 'use strict';
 
-var siteBuilder = require('../lib/site-builder');
+var SiteBuilder = require('../lib/site-builder');
 var Options = require('../lib/options');
 var CommandRunner = require('../lib/command-runner');
 var JekyllCommandHelper = require('../lib/jekyll-command-helper');
@@ -36,7 +36,7 @@ describe('SiteBuilder', function() {
 
   before(function() {
     cloneConfig();
-    siteBuilder.setConfiguration(config);
+    SiteBuilder.setConfiguration(config);
     filesHelper = new FilesHelper();
     return filesHelper.init(config);
   });
@@ -97,8 +97,8 @@ describe('SiteBuilder', function() {
     commandRunner = new CommandRunner(opts.sitePath, opts.repoName);
     jekyllHelper = new JekyllCommandHelper(commandRunner, opts,
       config.jekyll, config.bundler);
-    return new siteBuilder.SiteBuilder(opts, targetBranch, commandRunner,
-      jekyllHelper, logger, updateLock);
+    return new SiteBuilder(opts, targetBranch, commandRunner, jekyllHelper,
+      logger, updateLock);
   };
 
   describe('generated configuration', function() {
@@ -643,7 +643,7 @@ describe('SiteBuilder', function() {
     };
 
     it('should create a function to launch a builder', function() {
-      siteBuilder.makeBuilderListener(webhook, builderConfig);
+      SiteBuilder.makeBuilderListener(webhook, builderConfig);
       expect(webhook.on.calledTwice).to.be.true;
       expect(webhook.on.args[0].length).to.equal(2);
       expect(webhook.on.args[0][0]).to.equal('create');
@@ -677,7 +677,7 @@ describe('SiteBuilder', function() {
         expect(fs.readFileSync(buildLog, 'utf8')).to.equal(expectedLog);
       });
 
-      siteBuilder.makeBuilderListener(webhook, builderConfig, checkResult);
+      SiteBuilder.makeBuilderListener(webhook, builderConfig, checkResult);
       var launcher = webhook.on.args[0][1];
       mySpawn.setDefault(mySpawn.simple(0));
       captureLogs();
@@ -715,7 +715,7 @@ describe('SiteBuilder', function() {
       delete config.branch;
       config.branchInUrlPattern = 'v[0-9]+.[0-9]+.[0-9]*[a-z]+';
 
-      siteBuilder.makeBuilderListener(webhook, config, checkResult);
+      SiteBuilder.makeBuilderListener(webhook, config, checkResult);
       launcher = webhook.on.args[0][1];
       mySpawn.setDefault(mySpawn.simple(0));
       captureLogs();
@@ -750,7 +750,7 @@ describe('SiteBuilder', function() {
         expect(fs.readFileSync(buildLog, 'utf8')).to.equal(expectedLog);
       });
 
-      siteBuilder.makeBuilderListener(webhook, builderConfig, checkResult);
+      SiteBuilder.makeBuilderListener(webhook, builderConfig, checkResult);
       var launcher = webhook.on.args[0][1];
       mySpawn.setDefault(mySpawn.simple(1));
       captureLogs();
@@ -758,14 +758,14 @@ describe('SiteBuilder', function() {
     });
 
     it('should ignore payloads from other organizations', function() {
-      siteBuilder.makeBuilderListener(webhook, builderConfig);
+      SiteBuilder.makeBuilderListener(webhook, builderConfig);
       var launcher = webhook.on.args[0][1];
-      sinon.spy(siteBuilder, 'launchBuilder');
-      var internalLauncher = siteBuilder.launchBuilder;
+      sinon.spy(SiteBuilder, 'launchBuilder');
+      var internalLauncher = SiteBuilder.launchBuilder;
 
       incomingPayload.repository.organization = 'not18F';
       launcher(incomingPayload);
-      siteBuilder.launchBuilder.restore();
+      SiteBuilder.launchBuilder.restore();
       expect(internalLauncher.called).to.be.false;
     });
   });
