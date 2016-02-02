@@ -108,12 +108,11 @@ describe('SiteBuilder', function() {
     };
 
     writeConfig = function() {
-      var configExists = false;
-      return builder.readOrWriteConfig(configExists);
+      return builder.configHandler.writeConfig();
     };
 
     readConfig = function() {
-      expect(builder.generatedConfig).to.be.true;
+      expect(builder.configHandler.generatedConfig).to.be.true;
       return new Promise(function(resolve, reject) {
         fs.readFile(filesHelper.files.pagesConfig, function(err, data) {
           if (err) { reject(err); } else { resolve(data.toString()); }
@@ -173,70 +172,6 @@ describe('SiteBuilder', function() {
       return inRepoDir().then(writeConfig).then(readConfig)
         .then(checkResults(expectedContent))
         .then(function() { logMock.verify(); });
-    });
-  });
-
-  // Note that this internal function will only get called when a
-  // _config_18f_pages.yml file is present, not generated. Otherwise the
-  // server will generate this file, and the baseurl will match the output
-  // directory already.
-  describe('_parseDestinationFromConfigData', function() {
-    beforeEach(function() {
-      builder = makeBuilder();
-    });
-
-    it('should keep the default destination if undefined', function() {
-      builder._parseDestinationFromConfigData('');
-      expect(builder.buildDestination).to.equal(
-        path.join('dest_dir/repo_name'));
-    });
-
-    it('should keep the default destination if empty', function() {
-      builder._parseDestinationFromConfigData('baseurl:\n');
-      expect(builder.buildDestination).to.equal(
-        path.join('dest_dir/repo_name'));
-    });
-
-    it('should keep the default destination if empty with spaces', function() {
-      builder._parseDestinationFromConfigData('baseurl:   \n');
-      expect(builder.buildDestination).to.equal(
-        path.join('dest_dir/repo_name'));
-    });
-
-    it('should keep the default destination if set to root path', function() {
-      builder._parseDestinationFromConfigData('baseurl: /\n');
-      expect(builder.buildDestination).to.equal(
-        path.join('dest_dir/repo_name'));
-    });
-
-    it('should set the destination from config data baseurl', function() {
-      builder._parseDestinationFromConfigData('baseurl: /new-destination\n');
-      expect(builder.buildDestination).to.equal(
-        path.join('dest_dir/new-destination'));
-    });
-
-    it('should set the internal destination from config data', function() {
-      var opts = makeOpts();
-      opts.internalDestDir = 'internal_dest_dir';
-      var builder = makeBuilder(opts);
-      builder._parseDestinationFromConfigData('baseurl: /new-destination\n');
-      expect(builder.buildDestination).to.equal(
-        path.join('dest_dir/new-destination'));
-      expect(builder.internalBuildDestination).to.equal(
-        path.join('internal_dest_dir/new-destination'));
-    });
-
-    it('should parse baseurl if no leading space', function() {
-      builder._parseDestinationFromConfigData('baseurl:/new-destination\n');
-      expect(builder.buildDestination).to.equal(
-        path.join('dest_dir/new-destination'));
-    });
-
-    it('should trim all spaces around baseurl', function() {
-      builder._parseDestinationFromConfigData(
-        'baseurl:   /new-destination   \n');
-      expect(builder.buildDestination).to.equal(
-        path.join('dest_dir/new-destination'));
     });
   });
 
