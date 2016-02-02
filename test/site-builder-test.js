@@ -2,6 +2,8 @@
 
 var siteBuilder = require('../lib/site-builder');
 var Options = require('../lib/options');
+var CommandRunner = require('../lib/command-runner');
+var JekyllCommandHelper = require('../lib/jekyll-command-helper');
 var BuildLogger = require('../lib/build-logger');
 var fileLockedOperation = require('file-locked-operation');
 var fs = require('fs');
@@ -85,10 +87,18 @@ describe('SiteBuilder', function() {
     return new Options(info, config, builderConfig);
   };
 
-  var makeBuilder = function(opts) {
-    if (!opts) { opts = makeOpts(); }
+  var makeBuilder = function(options, branch) {
+    var opts = options || makeOpts(),
+        targetBranch = branch || '18f-pages',
+        commandRunner,
+        jekyllHelper;
+
     opts.sitePath = filesHelper.dirs.testRepoDir;
-    return new siteBuilder.SiteBuilder(opts, '18f-pages', logger, updateLock);
+    commandRunner = new CommandRunner(opts.sitePath, opts.repoName);
+    jekyllHelper = new JekyllCommandHelper(commandRunner, opts,
+      config.jekyll, config.bundler);
+    return new siteBuilder.SiteBuilder(opts, targetBranch, commandRunner,
+      jekyllHelper, logger, updateLock);
   };
 
   describe('generated configuration', function() {
@@ -159,8 +169,7 @@ describe('SiteBuilder', function() {
       opts = makeOpts();
       opts.sitePath = filesHelper.dirs.testRepoDir;
       opts.branchInUrlPattern = 'v[0-9]+.[0-9]+.[0-9]*[a-z]+';
-      builder = new siteBuilder.SiteBuilder(
-        opts, 'v0.9.x', logger, updateLock);
+      builder = makeBuilder(opts, 'v0.9.x');
 
       expectedContent = 'baseurl: /repo_name/v0.9.x\n' +
         'asset_root: ' + config.assetRoot + '\n';
@@ -545,8 +554,7 @@ describe('SiteBuilder', function() {
 
         opts.branchInUrlPattern = 'v[0-9]+.[0-9]+.[0-9]*[a-z]+';
         opts.sitePath = filesHelper.dirs.testRepoDir;
-        builder = new siteBuilder.SiteBuilder(
-          opts, 'v0.9.x', logger, updateLock);
+        builder = makeBuilder(opts, 'v0.9.x');
 
         builder.build(check(done, function(err) {
           expect(err).to.be.undefined;
