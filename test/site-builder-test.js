@@ -21,8 +21,8 @@ chai.should();
 chai.use(chaiAsPromised);
 
 describe('SiteBuilder', function() {
-  var builder, config, origSpawn, mySpawn, logger, logMock;
-  var filesHelper, filenameToContents, expectLogMessages;
+  var config, origSpawn, mySpawn, logger, logMock,
+      filesHelper, filenameToContents, expectLogMessages;
 
   function cloneConfig() {
     config = JSON.parse(JSON.stringify(OrigConfig));
@@ -96,80 +96,12 @@ describe('SiteBuilder', function() {
     return new SiteBuilder(targetBranch, components);
   };
 
-  describe('generated configuration', function() {
-    var inRepoDir, writeConfig, readConfig, checkResults;
-
-    inRepoDir = function() {
-      return filesHelper.createRepoDir();
-    };
-
-    writeConfig = function() {
-      return builder.configHandler.writeConfig();
-    };
-
-    readConfig = function() {
-      expect(builder.configHandler.generatedConfig).to.be.true;
-      return new Promise(function(resolve, reject) {
-        fs.readFile(filesHelper.files.pagesConfig, function(err, data) {
-          if (err) { reject(err); } else { resolve(data.toString()); }
-        });
-      });
-    };
-
-    checkResults = function(expectedContent) {
-      return function(content) {
-        return builder.configHandler.removeGeneratedConfig()
-          .then(function() {
-            expect(content).to.equal(expectedContent);
-          });
-      };
-    };
-
-    expectLogMessages = function(consoleArgs, expected) {
-      var consoleMessages = consoleArgs.map(function(arg) {
-        return arg.join(' ');
-      });
-
-      expect(consoleMessages).to.eql(expected);
-    };
-
-    it('should write the expected configuration', function() {
-      var expectedContent = 'baseurl: /repo_name\n' +
-        'asset_root: ' + config.assetRoot + '\n';
-
-      builder = makeBuilder();
-      logMock.expects('log').withExactArgs(
-        'generating', config.pagesConfig);
-      logMock.expects('log').withExactArgs(
-        'removing generated', config.pagesConfig);
-
-      return inRepoDir().then(writeConfig).then(readConfig)
-        .then(checkResults(expectedContent))
-        .then(function() { logMock.verify(); });
+  expectLogMessages = function(consoleArgs, expected) {
+    var consoleMessages = consoleArgs.map(function(arg) {
+      return arg.join(' ');
     });
-
-    it('should write a config with a branch-specific baseurl', function() {
-      var expectedContent,
-          opts;
-
-      opts = makeOpts();
-      opts.sitePath = filesHelper.dirs.testRepoDir;
-      opts.branchInUrlPattern = 'v[0-9]+.[0-9]+.[0-9]*[a-z]+';
-      builder = makeBuilder(opts, 'v0.9.x');
-
-      expectedContent = 'baseurl: /repo_name/v0.9.x\n' +
-        'asset_root: ' + config.assetRoot + '\n';
-
-      logMock.expects('log').withExactArgs(
-        'generating', config.pagesConfig);
-      logMock.expects('log').withExactArgs(
-        'removing generated', config.pagesConfig);
-
-      return inRepoDir().then(writeConfig).then(readConfig)
-        .then(checkResults(expectedContent))
-        .then(function() { logMock.verify(); });
-    });
-  });
+    expect(consoleMessages).to.eql(expected);
+  };
 
   it ('should use bundler if a Gemfile is present', function() {
     mySpawn.setDefault(mySpawn.simple(0));
@@ -252,51 +184,6 @@ describe('SiteBuilder', function() {
               jekyllBuildCommand]);
             logMock.verify();
           });
-      });
-  });
-
-  it('should use existing _config_18f_pages.yml if present', function() {
-    mySpawn.setDefault(mySpawn.simple(0));
-    logMock.expects('log').withExactArgs('syncing repo:', 'repo_name');
-    logMock.expects('log').withExactArgs(
-      'using existing', config.pagesConfig);
-    filenameToContents[filesHelper.files.pagesConfig] = '';
-    return filesHelper.createRepoWithFiles(filenameToContents)
-      .then(function() {
-        return makeBuilder().build().should.be.fulfilled.then(function() {
-          expect(spawnCalls()).to.eql([
-            'git stash',
-            'git pull',
-            'git submodule update --init',
-            'jekyll build --trace --destination ' +
-              path.join('dest_dir/repo_name') +
-              ' --config _config.yml,_config_18f_pages.yml'
-          ]);
-          logMock.verify();
-        });
-      });
-  });
-
-  it('should use baseurl from _config_18f_pages.yml as dest', function() {
-    mySpawn.setDefault(mySpawn.simple(0));
-    logMock.expects('log').withExactArgs('syncing repo:', 'repo_name');
-    logMock.expects('log').withExactArgs(
-      'using existing', config.pagesConfig);
-    filenameToContents[filesHelper.files.pagesConfig] =
-      'baseurl:  /new-destination  ';
-    return filesHelper.createRepoWithFiles(filenameToContents)
-      .then(function() {
-        return makeBuilder().build().should.be.fulfilled.then(function() {
-          expect(spawnCalls()).to.eql([
-            'git stash',
-            'git pull',
-            'git submodule update --init',
-            'jekyll build --trace --destination ' +
-              path.join('dest_dir/new-destination') +
-              ' --config _config.yml,_config_18f_pages.yml'
-          ]);
-          logMock.verify();
-        });
       });
   });
 

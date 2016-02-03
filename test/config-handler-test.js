@@ -2,10 +2,12 @@
 
 var ConfigHandler = require('../lib/config-handler');
 var RepositoryFileHandler = require('../lib/repository-file-handler');
+var BuildLogger = require('../lib/build-logger');
 var pagesConfig = require('../pages-config.json');
 var path = require('path');
 var sinon = require('sinon');
 var chai = require('chai');
+var expect = chai.expect;
 
 chai.should();
 
@@ -19,11 +21,12 @@ describe('ConfigHandler', function() {
       repoName: 'repo_name',
       destDir: 'dest_dir',
       internalDestDir: 'internal_dest_dir',
-      assetRoot: '',
+      assetRoot: '/guides-template',
       branchInUrlPattern: ''
     };
     opts.sitePath = path.join('some/test/dir', opts.repoName);
     fileHandler = new RepositoryFileHandler(opts);
+    logger = new BuildLogger();
   });
 
   beforeEach(function() {
@@ -134,7 +137,6 @@ describe('ConfigHandler', function() {
           ]);
         });
     });
-
   });
 
   // Note that this will only get called when a _config_18f_pages.yml file is
@@ -187,6 +189,80 @@ describe('ConfigHandler', function() {
         'baseurl:   /new-destination   \n');
       handler.buildDestination.should.equal(
         path.join('dest_dir/new-destination'));
+    });
+  });
+
+  describe('readOrWriteConfig', function() {
+    beforeEach(function() {
+      sinon.stub(logger, 'log');
+      sinon.stub(fileHandler, 'exists');
+      sinon.stub(fileHandler, 'readFile');
+      sinon.stub(fileHandler, 'writeFile');
+    });
+
+    afterEach(function() {
+      fileHandler.writeFile.restore();
+      fileHandler.readFile.restore();
+      fileHandler.exists.restore();
+      logger.log.restore();
+    });
+
+    it('should write a configuration file', function() {
+      fileHandler.exists.withArgs(config.pagesConfig)
+        .returns(Promise.resolve(false));
+      fileHandler.writeFile.returns(Promise.resolve());
+
+      return handler.readOrWriteConfig().should.be.fulfilled
+        .then(function() {
+          handler.generatedConfig.should.be.true;
+          logger.log.args.should.eql([['generating', config.pagesConfig]]);
+          fileHandler.writeFile.args.should.eql([
+            [config.pagesConfig,
+             'baseurl: /repo_name\n' +
+             'asset_root: ' + config.assetRoot + '\n'
+            ]
+          ]);
+        });
+    });
+
+    it('should write a config with a branch-specific baseurl', function() {
+      handler.branchInUrlPattern = new RegExp(
+        'v[0-9]+.[0-9]+.[0-9]*[a-z]+', 'i');
+      handler.branch = 'v0.9.0';
+
+      fileHandler.exists.withArgs(config.pagesConfig)
+        .returns(Promise.resolve(false));
+      fileHandler.writeFile.returns(Promise.resolve());
+
+      return handler.readOrWriteConfig().should.be.fulfilled
+        .then(function() {
+          handler.generatedConfig.should.be.true;
+          logger.log.args.should.eql([['generating', config.pagesConfig]]);
+          fileHandler.writeFile.args.should.eql([
+            [config.pagesConfig,
+             'baseurl: /repo_name/v0.9.0\n' +
+             'asset_root: ' + config.assetRoot + '\n'
+            ]
+          ]);
+        });
+    });
+
+    it('should read a config file and add its baseurl to dest', function() {
+      fileHandler.exists.withArgs(config.pagesConfig)
+        .returns(Promise.resolve(true));
+      fileHandler.readFile
+        .returns(Promise.resolve('baseurl: /new-destination\n'));
+
+      return handler.readOrWriteConfig().should.be.fulfilled
+        .then(function() {
+          expect(handler.generatedConfig).to.be.undefined;
+          handler.buildDestination.should.eql(
+            path.join(handler.destDir, '/new-destination'));
+          handler.internalBuildDestination.should.eql(
+            path.join(handler.internalDestDir, '/new-destination'));
+          logger.log.args.should.eql([['using existing', config.pagesConfig]]);
+          fileHandler.readFile.args.should.eql([[config.pagesConfig]]);
+        });
     });
   });
 });
