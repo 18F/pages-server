@@ -1,0 +1,56 @@
+#! /usr/bin/env node
+
+var crypto = require('crypto');
+var fs = require('fs');
+var path = require('path');
+var http = require('http');
+
+var host = 'http://localhost:5000/';
+var payload = fs.readFileSync(
+  path.join(__dirname, 'payload-general.txt'),
+  'utf8');
+var secret = fs.readFileSync(
+  path.join(__dirname, '..', '.18f-pages.secret'),
+  'utf8');
+secret = secret.trim();
+console.log('SECRET: ' + secret);
+
+function makeSignature(payload, secret) {
+  return 'sha1=' +
+    crypto.createHmac('sha1', secret).update(payload).digest('hex');
+}
+
+var options = {
+  hostname: 'localhost',
+  port: 5000,
+  path: '/',
+  method: 'POST',
+  headers: {
+    'Request URL': 'https://pages.18f.gov/deploy',
+    'Request method': 'POST',
+    'content-type': 'application/json',
+    'Expect': '',
+    'User-Agent': 'GitHub-Hookshot/9db916b',
+    'X-GitHub-Delivery': 'ce5e7300-6491-11e5-8c4b-fb535ffe3852',
+    'X-GitHub-Event': 'push',
+    'X-Hub-Signature': makeSignature(payload, secret),
+    'Content-Type': 'application/json',
+    'Content-Length': payload.length
+  }
+};
+
+var req = http.request(options, function(res) {
+  console.log('STATUS: ' + res.statusCode);
+  console.log('HEADERS: ' + JSON.stringify(res.headers));
+  res.setEncoding('utf8');
+  res.on('data', function(chunk) {
+    console.log(chunk);
+  });
+});
+
+req.on('error', function(e) {
+  console.error('request failed:' + e.message);
+});
+
+req.write(payload);
+req.end();
