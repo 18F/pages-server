@@ -70,4 +70,17 @@ describe('BuildLogger', function() {
         'This should also be logged to the file\n');
     }));
   });
+
+  it('should log to a null file', function(done) {
+    logger = new BuildLogger();
+    captureConsole();
+    logger.log('This', 'should', 'be', 'logged', 'to', 'stdout');
+    logger.error('This', 'should', 'be', 'logged', 'to', 'stderr');
+    logger.close(checkAndRestoreConsole(done, function() {
+      console.log.args.should.eql(
+        [['This', 'should', 'be', 'logged', 'to', 'stdout']]);
+      console.error.args.should.eql(
+        [['This', 'should', 'be', 'logged', 'to', 'stderr']]);
+    }));
+  });
 });
