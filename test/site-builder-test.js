@@ -122,7 +122,7 @@ describe('SiteBuilder', function() {
 
     checkResults = function(expectedContent) {
       return function(content) {
-        return builder.finishBuild()
+        return builder.configHandler.removeGeneratedConfig()
           .then(function() {
             expect(content).to.equal(expectedContent);
           });
