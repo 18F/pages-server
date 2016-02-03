@@ -143,7 +143,7 @@ describe('SiteBuilder', function() {
       expect(consoleMessages).to.eql(expected);
     };
 
-    it('should write the expected configuration', function(done) {
+    it('should write the expected configuration', function() {
       var expectedContent = 'baseurl: /repo_name\n' +
         'asset_root: ' + config.assetRoot + '\n';
 
@@ -153,12 +153,12 @@ describe('SiteBuilder', function() {
       logMock.expects('log').withExactArgs(
         'removing generated', config.pagesConfig);
 
-      inRepoDir().then(writeConfig).then(readConfig)
-          .then(checkResults(expectedContent))
-          .then(function() { logMock.verify(); }).should.notify(done);
+      return inRepoDir().then(writeConfig).then(readConfig)
+        .then(checkResults(expectedContent))
+        .then(function() { logMock.verify(); });
     });
 
-    it('should write a config with a branch-specific baseurl', function(done) {
+    it('should write a config with a branch-specific baseurl', function() {
       var expectedContent,
           opts;
 
@@ -175,9 +175,9 @@ describe('SiteBuilder', function() {
       logMock.expects('log').withExactArgs(
         'removing generated', config.pagesConfig);
 
-      inRepoDir().then(writeConfig).then(readConfig)
-          .then(checkResults(expectedContent))
-          .then(function() { logMock.verify(); }).should.notify(done);
+      return inRepoDir().then(writeConfig).then(readConfig)
+        .then(checkResults(expectedContent))
+        .then(function() { logMock.verify(); });
     });
   });
 
