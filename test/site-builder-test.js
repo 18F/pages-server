@@ -2,9 +2,8 @@
 
 var SiteBuilder = require('../lib/site-builder');
 var Options = require('../lib/options');
-var CommandRunner = require('../lib/command-runner');
-var JekyllCommandHelper = require('../lib/jekyll-command-helper');
 var BuildLogger = require('../lib/build-logger');
+var ComponentFactory = require('../lib/component-factory');
 var FileLockedOperation = require('file-locked-operation');
 var fs = require('fs');
 var path = require('path');
@@ -23,7 +22,7 @@ chai.use(chaiAsPromised);
 
 describe('SiteBuilder', function() {
   var builder, config, origSpawn, mySpawn, logger, logMock;
-  var filesHelper, updateLock, filenameToContents, expectLogMessages;
+  var filesHelper, filenameToContents, expectLogMessages;
 
   function cloneConfig() {
     config = JSON.parse(JSON.stringify(OrigConfig));
@@ -51,7 +50,6 @@ describe('SiteBuilder', function() {
     childProcess.spawn = mySpawn;
     logger = new BuildLogger();
     logMock = sinon.mock(logger);
-    updateLock = new FileLockedOperation(filesHelper.files.lockfilePath);
     filenameToContents = {};
   });
 
@@ -89,14 +87,13 @@ describe('SiteBuilder', function() {
   var makeBuilder = function(options, branch) {
     var opts = options || makeOpts(),
         targetBranch = branch || '18f-pages',
-        commandRunner,
-        jekyllHelper;
+        components;
 
     opts.sitePath = filesHelper.dirs.testRepoDir;
-    commandRunner = new CommandRunner(opts.sitePath, opts.repoName);
-    jekyllHelper = new JekyllCommandHelper(config, opts, commandRunner);
-    return new SiteBuilder(opts, targetBranch, commandRunner, jekyllHelper,
-      logger, updateLock);
+    components = new ComponentFactory(config, opts, targetBranch, logger);
+    components.updateLock = new FileLockedOperation(
+      filesHelper.files.lockfilePath);
+    return new SiteBuilder(targetBranch, components);
   };
 
   describe('generated configuration', function() {
