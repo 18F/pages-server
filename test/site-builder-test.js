@@ -5,7 +5,7 @@ var Options = require('../lib/options');
 var CommandRunner = require('../lib/command-runner');
 var JekyllCommandHelper = require('../lib/jekyll-command-helper');
 var BuildLogger = require('../lib/build-logger');
-var fileLockedOperation = require('file-locked-operation');
+var FileLockedOperation = require('file-locked-operation');
 var fs = require('fs');
 var path = require('path');
 var chai = require('chai');
@@ -51,8 +51,7 @@ describe('SiteBuilder', function() {
     childProcess.spawn = mySpawn;
     logger = new BuildLogger('/dev/null');
     logMock = sinon.mock(logger);
-    updateLock = new fileLockedOperation.FileLockedOperation(
-      filesHelper.files.lockfilePath);
+    updateLock = new FileLockedOperation(filesHelper.files.lockfilePath);
     filenameToContents = {};
   });
 
@@ -124,14 +123,10 @@ describe('SiteBuilder', function() {
 
     checkResults = function(expectedContent) {
       return function(content) {
-        return new Promise(function(resolve, reject) {
-          // Note the done callback wrapper will remove the generated config.
-          var buildDone = builder.generateBuildDone(function(err) {
+        return builder.finishBuild()
+          .then(function() {
             expect(content).to.equal(expectedContent);
-            if (err) { reject(err); } else { resolve(); }
           });
-          buildDone();
-        });
       };
     };
 

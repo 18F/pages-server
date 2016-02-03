@@ -29,7 +29,7 @@
   },
   "homepage": "https://github.com/18f/pages-server#readme",
   "dependencies": {
-    "file-locked-operation": "0.0.1",
+    "file-locked-operation": "^1.0.0",
     "github-webhook-validator": "0.1.1",
     "hookshot": "18f/hookshot#0.1.0-with-json-options"
   },
