@@ -12,7 +12,8 @@ var chai = require('chai');
 chai.should();
 
 describe('GitRunner', function() {
-  var config, opts, runner, commandRunner, logger;
+  var config, opts, runner, commandRunner, logger,
+      promise, sitePath, sitePathExists, startPromise;
 
   before(function() {
     config = JSON.parse(JSON.stringify(pagesConfig));
@@ -40,59 +41,76 @@ describe('GitRunner', function() {
     fs.exists.restore();
   });
 
-  describe('prepareRepo, syncRepo, and cloneRepo', function() {
-    var promise, sitePath, sitePathExists, startPromise;
+  startPromise = function() {
+    promise = runner.prepareRepo('18f-pages');
+    sitePath = fs.exists.args[0][0];
+    sitePathExists = fs.exists.args[0][1];
+  };
 
-    startPromise = function() {
-      promise = runner.prepareRepo('18f-pages');
-      sitePath = fs.exists.args[0][0];
-      sitePathExists = fs.exists.args[0][1];
-    };
+  it('should sync an existing repository', function() {
+    commandRunner.run.returns(Promise.resolve());
 
-    it('should sync an existing repository', function() {
-      commandRunner.run.returns(Promise.resolve());
-      commandRunner.run.returns(Promise.resolve());
-      commandRunner.run.returns(Promise.resolve());
+    startPromise();
+    sitePath.should.eql(opts.sitePath);
+    sitePathExists(true);
 
-      startPromise();
-      sitePath.should.eql(opts.sitePath);
-      sitePathExists(true);
+    return promise.should.be.fulfilled
+      .then(function() {
+        logger.log.args.should.eql([
+          ['syncing repo:', opts.repoName]
+        ]);
+        commandRunner.run.args.should.eql([
+          ['git', ['stash']],
+          ['git', ['pull']],
+          ['git', ['submodule', 'update', '--init']]
+        ]);
+      });
+  });
 
-      return promise.should.be.fulfilled
-        .then(function() {
-          logger.log.args.should.eql([
-            ['syncing repo:', opts.repoName]
-          ]);
-          commandRunner.run.args.should.eql([
-            ['git', ['stash']],
-            ['git', ['pull']],
-            ['git', ['submodule', 'update', '--init']]
-          ]);
-        });
-    });
+  it('should clone the repository if none yet exists', function() {
+    startPromise();
+    sitePath.should.eql(opts.sitePath);
+    sitePathExists(false);
 
-    it('should clone the repository if none yet exists', function() {
-      startPromise();
-      sitePath.should.eql(opts.sitePath);
-      sitePathExists(false);
+    return promise.should.be.fulfilled
+      .then(function() {
+        logger.log.args.should.eql([
+          [ 'cloning', 'repo_name', 'into',
+            path.join('some/test/dir/repo_name')
+          ]
+        ]);
+        commandRunner.run.args.should.eql([
+          [ 'git',
+            [ 'clone', 'git@github.com:18F/repo_name.git',
+              '--branch', '18f-pages'
+            ],
+            { cwd: opts.repoDir, stdio: 'inherit' },
+            'failed to clone'
+          ]
+        ]);
+      });
+  });
 
-      return promise.should.be.fulfilled
-        .then(function() {
-          logger.log.args.should.eql([
-            [ 'cloning', 'repo_name', 'into',
-              path.join('some/test/dir/repo_name')
-            ]
-          ]);
-          commandRunner.run.args.should.eql([
-            [ 'git',
-              [ 'clone', 'git@github.com:18F/repo_name.git',
-                '--branch', '18f-pages'
-              ],
-              { cwd: opts.repoDir, stdio: 'inherit' },
-              'failed to clone'
-            ]
-          ]);
-        });
-    });
+  it('should propagate an error if a sync fails', function() {
+    commandRunner.run.withArgs('git', ['stash'])
+      .returns(Promise.resolve());
+    commandRunner.run.withArgs('git', ['pull'])
+      .returns(Promise.reject(new Error('fail on git pull')));
+
+    startPromise();
+    sitePath.should.eql(opts.sitePath);
+    sitePathExists(true);
+
+    return promise.should.be.rejectedWith(Error, 'fail on git pull');
+  });
+
+  it('should propagate an error if a clone fails', function() {
+    commandRunner.run.returns(Promise.reject(new Error('fail on git clone')));
+
+    startPromise();
+    sitePath.should.eql(opts.sitePath);
+    sitePathExists(true);
+
+    return promise.should.be.rejectedWith(Error, 'fail on git clone');
   });
 });
