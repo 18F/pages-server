@@ -103,31 +103,6 @@ describe('SiteBuilder', function() {
     expect(consoleMessages).to.eql(expected);
   };
 
-  it ('should use bundler if a Gemfile is present', function() {
-    mySpawn.setDefault(mySpawn.simple(0));
-    logMock.expects('log').withExactArgs('syncing repo:', 'repo_name');
-    logMock.expects('log').withExactArgs(
-      'generating', config.pagesConfig);
-    logMock.expects('log').withExactArgs(
-      'removing generated', config.pagesConfig);
-    filenameToContents[filesHelper.files.gemfile] = '';
-    return filesHelper.createRepoWithFiles(filenameToContents)
-      .then(function() {
-        return makeBuilder().build().should.be.fulfilled.then(function() {
-          expect(spawnCalls()).to.eql([
-            'git stash',
-            'git pull',
-            'git submodule update --init',
-            'bundle install',
-            'bundle exec jekyll build --trace --destination ' +
-              path.join('dest_dir/repo_name') +
-              ' --config _config.yml,_config_18f_pages.yml'
-          ]);
-          logMock.verify();
-        });
-      });
-  });
-
   it ('should fail if bundle install fails', function() {
     mySpawn.sequence.add(mySpawn.simple(0));
     mySpawn.sequence.add(mySpawn.simple(0));
