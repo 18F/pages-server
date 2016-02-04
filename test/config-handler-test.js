@@ -37,10 +37,21 @@ describe('ConfigHandler', function() {
     beforeEach(function() {
       sinon.stub(fileHandler, 'exists');
       fileHandler.exists.returns(Promise.resolve(false));
+      fileHandler.exists.withArgs('_config.yml')
+        .returns(Promise.resolve(true));
     });
 
     afterEach(function() {
       fileHandler.exists.restore();
+    });
+
+    it('should detect when jekyll isn\'t used', function() {
+      fileHandler.exists.withArgs('_config.yml')
+        .returns(Promise.resolve(false));
+      return handler.init().should.be.fulfilled
+        .then(function() {
+          handler.usesJekyll.should.be.false;
+        });
     });
 
     it('should publish with the default config', function() {
