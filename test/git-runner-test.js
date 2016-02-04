@@ -7,9 +7,11 @@ var pagesConfig = require('../pages-config.json');
 var path = require('path');
 var fs = require('fs');
 var sinon = require('sinon');
+var chaiAsPromised = require('chai-as-promised');
 var chai = require('chai');
 
 chai.should();
+chai.use(chaiAsPromised);
 
 describe('GitRunner', function() {
   var config, opts, runner, commandRunner, logger,
