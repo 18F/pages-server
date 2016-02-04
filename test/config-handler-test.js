@@ -7,9 +7,11 @@ var pagesConfig = require('../pages-config.json');
 var path = require('path');
 var sinon = require('sinon');
 var chai = require('chai');
+var chaiAsPromised = require('chai-as-promised');
 var expect = chai.expect;
 
 chai.should();
+chai.use(chaiAsPromised);
 
 describe('ConfigHandler', function() {
   var config, opts, handler, fileHandler, logger;
@@ -289,6 +291,77 @@ describe('ConfigHandler', function() {
             path.join(handler.internalDestDir, '/new-destination'));
           logger.log.args.should.eql([['using existing', config.pagesConfig]]);
           fileHandler.readFile.args.should.eql([[config.pagesConfig]]);
+        });
+    });
+  });
+
+  describe('removeGeneratedConfig', function() {
+    beforeEach(function() {
+      sinon.stub(logger, 'log');
+      sinon.stub(fileHandler, 'unlink');
+    });
+
+    afterEach(function() {
+      logger.log.restore();
+      fileHandler.unlink.restore();
+    });
+
+    it('should do nothing if a config wasn\'t generated', function() {
+      return handler.removeGeneratedConfig().should.be.fulfilled
+        .then(function() {
+          logger.log.called.should.be.false;
+          fileHandler.unlink.called.should.be.false;
+        });
+    });
+
+    it('should propagate errors if a config wasn\'t generated', function() {
+      return handler.removeGeneratedConfig(new Error('test error'))
+        .should.be.rejectedWith(Error, 'test error')
+        .then(function() {
+          logger.log.called.should.be.false;
+          fileHandler.unlink.called.should.be.false;
+        });
+    });
+
+    it('should remove the generated config', function() {
+      handler.generatedConfig = true;
+      fileHandler.unlink.withArgs(handler.pagesConfig)
+        .returns(Promise.resolve());
+
+      return handler.removeGeneratedConfig().should.be.fulfilled
+        .then(function() {
+          logger.log.args.should.eql([
+            ['removing generated', handler.pagesConfig]
+          ]);
+        });
+    });
+
+    it('should remove the generated config and propagate errors', function() {
+      handler.generatedConfig = true;
+      fileHandler.unlink.withArgs(handler.pagesConfig)
+        .returns(Promise.resolve());
+
+      return handler.removeGeneratedConfig(new Error('test error'))
+        .should.be.rejectedWith(Error, 'test error')
+        .then(function() {
+          logger.log.args.should.eql([
+            ['removing generated', handler.pagesConfig]
+          ]);
+        });
+    });
+
+    it('should propagate unlink errors', function() {
+      handler.generatedConfig = true;
+      fileHandler.unlink.withArgs(handler.pagesConfig)
+        .returns(Promise.reject(new Error('unlink error')));
+
+      return handler.removeGeneratedConfig(new Error('test error'))
+        .should.be.rejectedWith(Error, 'unlink error')
+        .then(function() {
+          logger.log.args.should.have.deep.property('[0]')
+            .that.deep.equals(['removing generated', handler.pagesConfig]);
+          logger.log.args.should.have.deep.property('[1][0].message')
+            .that.deep.equals('unlink error');
         });
     });
   });
