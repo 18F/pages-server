@@ -36,6 +36,7 @@ describe('ConfigHandler', function() {
   describe('init and buildConfigurations', function() {
     beforeEach(function() {
       sinon.stub(fileHandler, 'exists');
+      fileHandler.exists.returns(Promise.resolve(false));
     });
 
     afterEach(function() {
@@ -135,6 +136,21 @@ describe('ConfigHandler', function() {
               configurations: '_config.yml,' + config.pagesConfig
             }
           ]);
+        });
+    });
+
+    it('should use raw jekyll if there is no Gemfile', function() {
+      return handler.init().should.be.fulfilled
+        .then(function() {
+          handler.usesBundler.should.be.false;
+        });
+    });
+
+    it('should use bundle exec jekyll if there is a Gemfile', function() {
+      fileHandler.exists.withArgs('Gemfile').returns(Promise.resolve(true));
+      return handler.init().should.be.fulfilled
+        .then(function() {
+          handler.usesBundler.should.be.true;
         });
     });
   });
