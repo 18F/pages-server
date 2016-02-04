@@ -21,8 +21,7 @@ chai.should();
 chai.use(chaiAsPromised);
 
 describe('SiteBuilder', function() {
-  var config, origSpawn, mySpawn, logger, logMock,
-      filesHelper, filenameToContents, expectLogMessages;
+  var config, origSpawn, mySpawn, logger, filesHelper, expectLogMessages;
 
   function cloneConfig() {
     config = JSON.parse(JSON.stringify(OrigConfig));
@@ -49,20 +48,12 @@ describe('SiteBuilder', function() {
     mySpawn = mockSpawn();
     childProcess.spawn = mySpawn;
     logger = new BuildLogger();
-    logMock = sinon.mock(logger);
-    filenameToContents = {};
   });
 
   afterEach(function() {
     childProcess.spawn = origSpawn;
     return filesHelper.afterEach();
   });
-
-  var spawnCalls = function() {
-    return mySpawn.calls.map(function(value) {
-      return value.command + ' ' + value.args.join(' ');
-    });
-  };
 
   var check = function(done, cb) {
     return function(err) { try { cb(err); done(); } catch (e) { done(e); } };
@@ -103,85 +94,108 @@ describe('SiteBuilder', function() {
     expect(consoleMessages).to.eql(expected);
   };
 
-  it ('should fail if bundle install fails', function() {
-    mySpawn.sequence.add(mySpawn.simple(0));
-    mySpawn.sequence.add(mySpawn.simple(0));
-    mySpawn.sequence.add(mySpawn.simple(0));
-    mySpawn.sequence.add(mySpawn.simple(1));
-    logMock.expects('log').withExactArgs('syncing repo:', 'repo_name');
-    filenameToContents[filesHelper.files.gemfile] = '';
-    return filesHelper.createRepoWithFiles(filenameToContents)
-      .then(function() {
-        var bundleInstallCommand = 'bundle install';
+  describe('build', function() {
+    var builder, buildConfigs, runBuild;
 
-        return makeBuilder().build().should.be.rejectedWith(
-          'Error: rebuild failed for repo_name with ' +
-            'exit code 1 from command: ' + bundleInstallCommand)
-          .then(function() {
-            expect(spawnCalls()).to.eql([
-              'git stash',
-              'git pull',
-              'git submodule update --init',
-              bundleInstallCommand]);
-            logMock.verify();
-          });
-      });
-  });
+    beforeEach(function() {
+      builder = makeBuilder();
+      buildConfigs = [{
+        destination: 'dest_dir',
+        configurations: '_config.yml,' + config.pagesConfig
+      }];
 
-  it ('should fail if jekyll build fails', function() {
-    mySpawn.sequence.add(mySpawn.simple(0));
-    mySpawn.sequence.add(mySpawn.simple(0));
-    mySpawn.sequence.add(mySpawn.simple(0));
-    mySpawn.sequence.add(mySpawn.simple(0));
-    mySpawn.sequence.add(mySpawn.simple(1));
-    logMock.expects('log').withExactArgs('syncing repo:', 'repo_name');
-    logMock.expects('log').withExactArgs(
-      'generating', config.pagesConfig);
-    logMock.expects('log').withExactArgs(
-      'removing generated', config.pagesConfig);
-    filenameToContents[filesHelper.files.gemfile] = '';
-    return filesHelper.createRepoWithFiles(filenameToContents)
-      .then(function() {
-        var jekyllBuildCommand =
-          'bundle exec jekyll build --trace --destination ' +
-            path.join('dest_dir/repo_name') +
-            ' --config _config.yml,_config_18f_pages.yml';
+      sinon.stub(builder.gitRunner, 'prepareRepo')
+        .returns(Promise.resolve());
+      sinon.stub(builder.configHandler, 'init')
+        .returns(Promise.resolve());
+      sinon.stub(builder.commandRunner, 'run')
+        .returns(Promise.resolve());
+      sinon.stub(builder.configHandler, 'readOrWriteConfig')
+        .returns(Promise.resolve());
+      sinon.stub(builder.configHandler, 'buildConfigurations')
+        .returns(buildConfigs);
+      sinon.stub(builder.jekyllHelper, 'build')
+        .returns(Promise.resolve());
+      sinon.stub(builder.configHandler, 'removeGeneratedConfig')
+        .returns(Promise.resolve());
+      sinon.stub(builder.updateLock, 'doLockedOperation')
+        .returns(Promise.resolve());
+    });
 
-        return makeBuilder().build().should.be.rejectedWith(
-          'Error: rebuild failed for repo_name with ' +
-            'exit code 1 from command: ' + jekyllBuildCommand)
-          .then(function() {
-            expect(spawnCalls()).to.eql([
-              'git stash',
-              'git pull',
-              'git submodule update --init',
-              'bundle install',
-              jekyllBuildCommand]);
-            logMock.verify();
-          });
-      });
-  });
-
-  it('should use rsync if _config.yml is not present', function() {
-    mySpawn.setDefault(mySpawn.simple(0));
-    logMock.expects('log').withExactArgs('syncing repo:', 'repo_name');
-    filenameToContents[filesHelper.files.pagesConfig] = '';
-    return filesHelper.createRepoWithFiles(filenameToContents)
-      .then(function() {
-        return filesHelper.removeFile(filesHelper.files.configYml);
-      })
-      .then(function() {
-        return makeBuilder().build().should.be.fulfilled.then(function() {
-          expect(spawnCalls()).to.eql([
-            'git stash',
-            'git pull',
-            'git submodule update --init',
-            'rsync -vaxp --delete --ignore-errors --exclude=.[A-Za-z0-9]* ' +
-              './ ' + path.join('dest_dir/repo_name')
-          ]);
-          logMock.verify();
+    runBuild = function() {
+      return builder.build()
+        .then(function() {
+          return builder.updateLock.doLockedOperation.args[0][0]();
         });
-      });
+    };
+
+    it('should perform a successful jekyll build without bundler', function() {
+      builder.configHandler.usesJekyll = true;
+      builder.configHandler.usesBundler = false;
+
+      return runBuild().should.be.fulfilled
+        .then(function() {
+          builder.gitRunner.prepareRepo.args.should.eql([[builder.branch]]);
+          builder.configHandler.init.called.should.be.true;
+          builder.commandRunner.run.called.should.be.false;
+          builder.configHandler.readOrWriteConfig.called.should.be.true;
+          builder.jekyllHelper.build.args.should.eql([
+            [buildConfigs, { bundler: false }]
+          ]);
+          builder.configHandler.removeGeneratedConfig.called.should.be.true;
+        });
+    });
+
+    it('should perform a successful jekyll build using bundler', function() {
+      builder.configHandler.usesJekyll = true;
+      builder.configHandler.usesBundler = true;
+
+      return runBuild().should.be.fulfilled
+        .then(function() {
+          builder.gitRunner.prepareRepo.args.should.eql([[builder.branch]]);
+          builder.configHandler.init.called.should.be.true;
+          builder.commandRunner.run.args.should.eql([
+            [config.bundler, ['install']]
+          ]);
+          builder.configHandler.readOrWriteConfig.called.should.be.true;
+          builder.jekyllHelper.build.args.should.eql([
+            [buildConfigs, { bundler: true }]
+          ]);
+          builder.configHandler.removeGeneratedConfig.called.should.be.true;
+        });
+    });
+
+    it('should perform a successful rsync build', function() {
+      builder.configHandler.usesJekyll = false;
+      builder.configHandler.usesBundler = false;
+      builder.configHandler.buildDestination = 'dest_dir';
+
+      return runBuild().should.be.fulfilled
+        .then(function() {
+          builder.gitRunner.prepareRepo.args.should.eql([[builder.branch]]);
+          builder.configHandler.init.called.should.be.true;
+          builder.commandRunner.run.args.should.eql([
+            [config.rsync, config.rsyncOpts.concat(['./', 'dest_dir'])]
+          ]);
+          builder.configHandler.readOrWriteConfig.called.should.be.false;
+          builder.jekyllHelper.build.called.should.be.false;
+          builder.configHandler.removeGeneratedConfig.called.should.be.false;
+        });
+    });
+
+    it('should propagate errors from a failed build', function() {
+      builder.gitRunner.prepareRepo.withArgs(builder.branch)
+        .returns(Promise.reject(new Error('test error')));
+
+      return runBuild().should.be.rejectedWith(Error, 'test error')
+        .then(function() {
+          builder.configHandler.init.called.should.be.false;
+          builder.commandRunner.run.called.should.be.false;
+          builder.configHandler.readOrWriteConfig.called.should.be.false;
+          builder.jekyllHelper.build.called.should.be.false;
+          builder.configHandler.removeGeneratedConfig.called.should.be.false;
+        });
+    });
   });
 
   describe('makeBuilderListener and launchBuilder', function() {
@@ -293,44 +307,6 @@ describe('SiteBuilder', function() {
       mySpawn.setDefault(mySpawn.simple(0));
       captureLogs();
       launcher(incomingPayload);
-    });
-
-    it('should build by matching branchInUrlPattern', function(done) {
-      var launcher, checkResult, payload, config;
-
-      checkResult = check(done, function(err) {
-        var logMsgs = console.log.args,
-            errorMsgs = console.error.args,
-            expectedMessages = [
-              '18F/foo: starting build at commit deadbeef',
-              'description: Build me',
-              'timestamp: 2015-09-25',
-              'committer: michael.bland@gsa.gov',
-              'pusher: Mike Bland michael.bland@gsa.gov',
-              'sender: mbland',
-              'cloning foo into ' + cloneDir,
-              'foo: build successful'
-            ],
-            expectedLog = expectedMessages.join('\n') + '\n';
-
-        restoreLogs();
-        expect(err).to.be.null;
-        expectLogMessages(logMsgs, expectedMessages);
-        expect(errorMsgs).to.be.empty;
-        expect(fs.readFileSync(buildLog, 'utf8')).to.equal(expectedLog);
-      });
-
-      payload = JSON.parse(JSON.stringify(incomingPayload));
-      payload.ref = 'refs/heads/v0.9.x';
-      config = JSON.parse(JSON.stringify(builderConfig));
-      delete config.branch;
-      config.branchInUrlPattern = 'v[0-9]+.[0-9]+.[0-9]*[a-z]+';
-
-      SiteBuilder.makeBuilderListener(webhook, config, checkResult);
-      launcher = webhook.on.args[0][1];
-      mySpawn.setDefault(mySpawn.simple(0));
-      captureLogs();
-      launcher(payload);
     });
 
     it('should create a builder that fails to build the site', function(done) {
