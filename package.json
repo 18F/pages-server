@@ -31,7 +31,8 @@
   "dependencies": {
     "file-locked-operation": "^1.0.0",
     "github-webhook-validator": "0.1.1",
-    "hookshot": "18f/hookshot#0.1.0-with-json-options"
+    "hookshot": "18f/hookshot#0.1.0-with-json-options",
+    "yamljs": "^0.2.4"
   },
   "devDependencies": {
     "chai": "^3.3.0",

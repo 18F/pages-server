@@ -20,6 +20,7 @@ describe('ConfigHandler', function() {
     config = JSON.parse(JSON.stringify(pagesConfig));
     opts = {
       pagesConfig: config.pagesConfig,
+      pagesYaml: config.pagesYaml,
       repoName: 'repo_name',
       destDir: 'dest_dir',
       internalDestDir: 'internal_dest_dir',
@@ -38,12 +39,14 @@ describe('ConfigHandler', function() {
   describe('init and buildConfigurations', function() {
     beforeEach(function() {
       sinon.stub(fileHandler, 'exists');
+      sinon.stub(fileHandler, 'readFile');
       fileHandler.exists.returns(Promise.resolve(false));
       fileHandler.exists.withArgs('_config.yml')
         .returns(Promise.resolve(true));
     });
 
     afterEach(function() {
+      fileHandler.readFile.restore();
       fileHandler.exists.restore();
     });
 
@@ -166,6 +169,54 @@ describe('ConfigHandler', function() {
           handler.usesBundler.should.be.true;
         });
     });
+
+    it('should do nothing if .18f-pages.yml is missing', function() {
+      return handler.init().should.be.fulfilled
+        .then(function() {
+          handler.hasPagesYaml.should.be.false;
+          expect(handler.baseurl).to.be.undefined;
+          handler.buildDestination.should.eql(
+            path.join(handler.destDir, handler.repoName));
+          handler.internalBuildDestination.should.eql(
+            path.join(handler.internalDestDir, handler.repoName));
+        });
+    });
+
+    it('should set attributes if .18f-pages.yml is present', function() {
+      fileHandler.exists.withArgs(pagesConfig.pagesYaml)
+        .returns(Promise.resolve(true));
+      fileHandler.readFile.withArgs(pagesConfig.pagesYaml)
+        .returns(Promise.resolve('baseurl: /new-baseurl\n'));
+
+      handler.branchInUrlPattern = new RegExp(
+        'v[0-9]+.[0-9]+.[0-9]*[a-z]+', 'i');
+      handler.branch = 'v0.9.0';
+
+      return handler.init().should.be.fulfilled
+        .then(function() {
+          handler.hasPagesYaml.should.be.true;
+          handler.baseurl.should.eql('/new-baseurl');
+          handler.buildDestination.should.eql(
+            path.join(handler.destDir, '/new-baseurl'));
+          handler.internalBuildDestination.should.eql(
+            path.join(handler.internalDestDir, '/new-baseurl'));
+          handler.buildConfigurations().should.eql([
+            { destination: path.join('dest_dir/new-baseurl/v0.9.0'),
+              configurations: '_config.yml,' + config.pagesConfig
+            }
+          ]);
+        });
+    });
+
+    it('should pass through any YAML errors', function() {
+      fileHandler.exists.withArgs(pagesConfig.pagesYaml)
+        .returns(Promise.resolve(true));
+      fileHandler.readFile.withArgs(pagesConfig.pagesYaml)
+        .returns(Promise.resolve('foo: "bar: baz'));
+
+      return handler.init().should.be.rejectedWith(
+        'Malformed inline YAML string ("bar: baz)');
+    });
   });
 
   // Note that this will only get called when a _config_18f_pages.yml file is
@@ -254,22 +305,32 @@ describe('ConfigHandler', function() {
         });
     });
 
-    it('should write a config with a branch-specific baseurl', function() {
+    it('should write a baseurl from .18f-pages.yml + branch', function() {
       handler.branchInUrlPattern = new RegExp(
         'v[0-9]+.[0-9]+.[0-9]*[a-z]+', 'i');
       handler.branch = 'v0.9.0';
+
+      fileHandler.exists.returns(Promise.resolve(false));
+
+      fileHandler.exists.withArgs(pagesConfig.pagesYaml)
+        .returns(Promise.resolve(true));
+      fileHandler.readFile.withArgs(pagesConfig.pagesYaml)
+        .returns(Promise.resolve('baseurl: /new-baseurl\n'));
 
       fileHandler.exists.withArgs(config.pagesConfig)
         .returns(Promise.resolve(false));
       fileHandler.writeFile.returns(Promise.resolve());
 
-      return handler.readOrWriteConfig().should.be.fulfilled
+      return handler.init().should.be.fulfilled
+        .then(function() {
+          return handler.readOrWriteConfig().should.be.fulfilled;
+        })
         .then(function() {
           handler.generatedConfig.should.be.true;
           logger.log.args.should.eql([['generating', config.pagesConfig]]);
           fileHandler.writeFile.args.should.eql([
             [config.pagesConfig,
-             'baseurl: /repo_name/v0.9.0\n' +
+             'baseurl: /new-baseurl/v0.9.0\n' +
              'asset_root: ' + config.assetRoot + '\n'
             ]
           ]);
