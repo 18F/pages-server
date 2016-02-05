@@ -346,7 +346,7 @@ describe('ConfigHandler', function() {
           fileHandler.writeFile.args.should.eql([
             [config.pagesConfig,
              'baseurl: /new-baseurl/v0.9.0\n' +
-             'asset_root: ' + config.assetRoot + '\n'
+             'asset_root: /new-baseurl/v0.9.0\n'
             ]
           ]);
         });
