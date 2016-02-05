@@ -43,9 +43,11 @@ describe('ConfigHandler', function() {
       fileHandler.exists.returns(Promise.resolve(false));
       fileHandler.exists.withArgs('_config.yml')
         .returns(Promise.resolve(true));
+      sinon.stub(logger, 'log');
     });
 
     afterEach(function() {
+      logger.log.restore();
       fileHandler.readFile.restore();
       fileHandler.exists.restore();
     });
@@ -216,6 +218,19 @@ describe('ConfigHandler', function() {
 
       return handler.init().should.be.rejectedWith(
         'Malformed inline YAML string ("bar: baz)');
+    });
+
+    it('should not detect YAML file presence if not configured', function() {
+      // This can happen if the pages-config.json file does not have 
+      // a pagesYaml property defined.
+      fileHandler.exists.withArgs(undefined).throws();
+      handler.pagesYaml = undefined;
+      return handler.init().should.be.fulfilled
+        .then(function() {
+          logger.log.args.should.eql([
+            ['missing file configuration for property: hasPagesYaml']
+          ]);
+        });
     });
   });
 
