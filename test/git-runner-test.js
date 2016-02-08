@@ -65,6 +65,7 @@ describe('GitRunner', function() {
           ['git', ['fetch', 'origin', '18f-pages']],
           ['git', ['clean', '-f']],
           ['git', ['reset', '--hard', 'origin/18f-pages']],
+          ['git', ['submodule', 'sync', '--recursive']],
           ['git', ['submodule', 'update', '--init', '--recursive']]
         ]);
       });
