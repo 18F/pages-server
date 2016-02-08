@@ -11,6 +11,7 @@
   "payloadLimit":     1048576,
   "githubOrg":        "18F",
   "pagesConfig":      "_config_18f_pages.yml",
+  "pagesYaml":        ".18f-pages.yml",
   "assetRoot":        "/guides-template",
   "fileLockWaitTime": 30000,
   "fileLockPollTime": 1000,

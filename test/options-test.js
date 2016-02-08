@@ -54,6 +54,7 @@ describe('Options', function() {
     var builderConfig = {
       'githubOrg': 'foobar',
       'pagesConfig': '_config_foobar_pages.yml',
+      'pagesYaml': '.18f-pages.yml',
       'branch': 'foobar-pages',
       'repositoryDir': 'repo_dir',
       'generatedSiteDir': 'dest_dir',
@@ -71,6 +72,7 @@ describe('Options', function() {
     expect(opts.internalDestDir).to.be.undefined;
     expect(opts.githubOrg).to.equal('foobar');
     expect(opts.pagesConfig).to.equal('_config_foobar_pages.yml');
+    expect(opts.pagesYaml).to.equal('.18f-pages.yml');
     expect(opts.assetRoot).to.equal('/foobar-template');
     expect(opts.branchInUrlPattern.toString()).to.equal(
       '/' + builderConfig.branchInUrlPattern + '/i');
