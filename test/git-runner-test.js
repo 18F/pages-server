@@ -62,9 +62,10 @@ describe('GitRunner', function() {
           ['syncing repo:', opts.repoName]
         ]);
         commandRunner.run.args.should.eql([
-          ['git', ['stash']],
-          ['git', ['pull']],
-          ['git', ['submodule', 'update', '--init']]
+          ['git', ['fetch', 'origin', '18f-pages']],
+          ['git', ['clean', '-f']],
+          ['git', ['reset', '--hard', 'origin/18f-pages']],
+          ['git', ['submodule', 'update', '--init', '--recursive']]
         ]);
       });
   });
@@ -94,16 +95,16 @@ describe('GitRunner', function() {
   });
 
   it('should propagate an error if a sync fails', function() {
-    commandRunner.run.withArgs('git', ['stash'])
+    commandRunner.run.withArgs('git', ['fetch', 'origin', '18f-pages'])
       .returns(Promise.resolve());
-    commandRunner.run.withArgs('git', ['pull'])
-      .returns(Promise.reject(new Error('fail on git pull')));
+    commandRunner.run.withArgs('git', ['clean', '-f'])
+      .returns(Promise.reject(new Error('fail on git clean')));
 
     startPromise();
     sitePath.should.eql(opts.sitePath);
     sitePathExists(true);
 
-    return promise.should.be.rejectedWith(Error, 'fail on git pull');
+    return promise.should.be.rejectedWith(Error, 'fail on git clean');
   });
 
   it('should propagate an error if a clone fails', function() {
