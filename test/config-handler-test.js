@@ -210,6 +210,27 @@ describe('ConfigHandler', function() {
         });
     });
 
+    it('should set an empty baseurl from .18f-pages.yml', function() {
+      fileHandler.exists.withArgs(pagesConfig.pagesYaml)
+        .returns(Promise.resolve(true));
+      fileHandler.readFile.withArgs(pagesConfig.pagesYaml)
+        .returns(Promise.resolve('baseurl:\n'));
+
+      return handler.init().should.be.fulfilled
+        .then(function() {
+          handler.hasPagesYaml.should.be.true;
+          handler.baseurl.should.eql('');
+          handler.buildDestination.should.eql(path.join(handler.destDir));
+          handler.internalBuildDestination.should.eql(
+            path.join(handler.internalDestDir));
+          handler.buildConfigurations().should.eql([
+            { destination: path.join('dest_dir'),
+              configurations: '_config.yml,' + config.pagesConfig
+            }
+          ]);
+        });
+    });
+
     it('should pass through any YAML errors', function() {
       fileHandler.exists.withArgs(pagesConfig.pagesYaml)
         .returns(Promise.resolve(true));
