@@ -40,6 +40,7 @@ describe('ConfigHandler', function() {
     beforeEach(function() {
       sinon.stub(fileHandler, 'exists');
       sinon.stub(fileHandler, 'readFile');
+      sinon.stub(fileHandler, 'writeFile');
       fileHandler.exists.returns(Promise.resolve(false));
       fileHandler.exists.withArgs('_config.yml')
         .returns(Promise.resolve(true));
@@ -48,6 +49,7 @@ describe('ConfigHandler', function() {
 
     afterEach(function() {
       logger.log.restore();
+      fileHandler.writeFile.restore();
       fileHandler.readFile.restore();
       fileHandler.exists.restore();
     });
@@ -189,6 +191,9 @@ describe('ConfigHandler', function() {
         .returns(Promise.resolve(true));
       fileHandler.readFile.withArgs(pagesConfig.pagesYaml)
         .returns(Promise.resolve('baseurl: /new-baseurl\n'));
+      fileHandler.exists.withArgs(pagesConfig.pagesConfig)
+        .returns(Promise.resolve(false));
+      fileHandler.writeFile.returns(Promise.resolve());
 
       handler.branchInUrlPattern = new RegExp(
         'v[0-9]+.[0-9]+.[0-9]*[a-z]+', 'i');
@@ -207,6 +212,15 @@ describe('ConfigHandler', function() {
               configurations: '_config.yml,' + config.pagesConfig
             }
           ]);
+          return handler.readOrWriteConfig();
+        })
+        .should.be.fulfilled.then(function() {
+          fileHandler.writeFile.args.should.eql([
+            [config.pagesConfig,
+             'baseurl: /new-baseurl/v0.9.0\n' +
+             'asset_root: /new-baseurl/v0.9.0\n'
+            ]
+          ]);
         });
     });
 
@@ -215,18 +229,31 @@ describe('ConfigHandler', function() {
         .returns(Promise.resolve(true));
       fileHandler.readFile.withArgs(pagesConfig.pagesYaml)
         .returns(Promise.resolve('baseurl:\n'));
+      fileHandler.exists.withArgs(pagesConfig.pagesConfig)
+        .returns(Promise.resolve(false));
+      fileHandler.writeFile.returns(Promise.resolve());
 
       return handler.init().should.be.fulfilled
         .then(function() {
           handler.hasPagesYaml.should.be.true;
           handler.baseurl.should.eql('');
-          handler.buildDestination.should.eql(path.join(handler.destDir));
+          handler.buildDestination.should.eql(
+            path.join(handler.destDir, handler.repoName));
           handler.internalBuildDestination.should.eql(
-            path.join(handler.internalDestDir));
+            path.join(handler.internalDestDir, handler.repoName));
           handler.buildConfigurations().should.eql([
-            { destination: path.join('dest_dir'),
+            { destination: path.join('dest_dir', handler.repoName),
               configurations: '_config.yml,' + config.pagesConfig
             }
+          ]);
+          return handler.readOrWriteConfig();
+        })
+        .should.be.fulfilled.then(function() {
+          fileHandler.writeFile.args.should.eql([
+            [config.pagesConfig,
+             'baseurl: \n' +
+             'asset_root: ' + config.assetRoot + '\n'
+            ]
           ]);
         });
     });
