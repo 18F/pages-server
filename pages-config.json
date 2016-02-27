@@ -3,6 +3,7 @@
   "home":             "/usr/local/18f/pages",
   "git":              "/usr/bin/git",
   "bundler":          "/usr/local/18f/rbenv/shims/bundle",
+  "bundlerCacheDir":  "bundler-cache",
   "jekyll":           "/usr/local/18f/rbenv/shims/jekyll",
   "rsync":            "/usr/bin/rsync",
   "rsyncOpts":        [
