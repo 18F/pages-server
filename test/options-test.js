@@ -31,12 +31,12 @@ describe('Options', function() {
     };
 
     var opts = new Options(info, config, builderConfig);
-    expect(opts.repoDir).to.equal(path.join('/home/ubuntu/repo_dir'));
+    expect(opts.repoDir).to.equal(path.join(config.home, 'repo_dir'));
     expect(opts.repoName).to.equal('repo_name');
     expect(opts.sitePath).to.equal(
-      path.join('/home/ubuntu/repo_dir/repo_name'));
+      path.join(config.home, 'repo_dir/repo_name'));
     expect(opts.branch).to.equal('18f-pages');
-    expect(opts.destDir).to.equal(path.join('/home/ubuntu/dest_dir'));
+    expect(opts.destDir).to.equal(path.join(config.home, 'dest_dir'));
     expect(opts.internalDestDir).to.be.undefined;
     expect(opts.githubOrg).to.equal('18F');
     expect(opts.pagesConfig).to.equal('_config_18f_pages.yml');
@@ -63,12 +63,12 @@ describe('Options', function() {
     };
 
     var opts = new Options(info, config, builderConfig);
-    expect(opts.repoDir).to.equal(path.join('/home/ubuntu/repo_dir'));
+    expect(opts.repoDir).to.equal(path.join(config.home, 'repo_dir'));
     expect(opts.repoName).to.equal('repo_name');
     expect(opts.sitePath).to.equal(
-      path.join('/home/ubuntu/repo_dir/repo_name'));
+      path.join(config.home, 'repo_dir/repo_name'));
     expect(opts.branch).to.equal('foobar-pages');
-    expect(opts.destDir).to.equal(path.join('/home/ubuntu/dest_dir'));
+    expect(opts.destDir).to.equal(path.join(config.home, 'dest_dir'));
     expect(opts.internalDestDir).to.be.undefined;
     expect(opts.githubOrg).to.equal('foobar');
     expect(opts.pagesConfig).to.equal('_config_foobar_pages.yml');
@@ -94,8 +94,8 @@ describe('Options', function() {
     };
 
     var opts = new Options(info, config, builderConfig);
-    expect(opts.destDir).to.equal(path.join('/home/ubuntu/dest_dir'));
+    expect(opts.destDir).to.equal(path.join(config.home, 'dest_dir'));
     expect(opts.internalDestDir).to.equal(
-      path.join('/home/ubuntu/internal_dest_dir'));
+      path.join(config.home, 'internal_dest_dir'));
   });
 });
