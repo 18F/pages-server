@@ -84,7 +84,7 @@ describe('SiteBuilder', function() {
     beforeEach(function() {
       builder = makeBuilder();
       buildConfigs = [{
-        destination: 'dest_dir',
+        destination: path.join(config.home, 'dest_dir/repo_name'),
         configurations: '_config.yml,' + config.pagesConfig
       }];
 
