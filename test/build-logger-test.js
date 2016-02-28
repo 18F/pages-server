@@ -1,6 +1,6 @@
 'use strict';
 
-var BuildLogger = require('../lib/build-logger.js');
+var BuildLogger = require('../lib/build-logger');
 var path = require('path');
 var fs = require('fs');
 var sinon = require('sinon');
