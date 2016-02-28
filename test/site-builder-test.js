@@ -4,7 +4,6 @@ var SiteBuilder = require('../lib/site-builder');
 var Options = require('../lib/options');
 var BuildLogger = require('../lib/build-logger');
 var ComponentFactory = require('../lib/component-factory');
-var FileLockedOperation = require('file-locked-operation');
 var fs = require('fs');
 var path = require('path');
 var chai = require('chai');
@@ -76,10 +75,7 @@ describe('SiteBuilder', function() {
         targetBranch = branch || '18f-pages',
         components;
 
-    opts.sitePath = filesHelper.dirs.testRepoDir;
     components = new ComponentFactory(config, opts, targetBranch, logger);
-    components.updateLock = new FileLockedOperation(
-      filesHelper.files.lockfilePath);
     return new SiteBuilder(targetBranch, components);
   };
 
@@ -217,40 +213,27 @@ describe('SiteBuilder', function() {
 
       builderConfig = {
         'branch': '18f-pages',
-        'repositoryDir': path.join(filesHelper.dirs.testRepoDir, 'repo_dir'),
-        'generatedSiteDir': path.join(filesHelper.dirs.testRepoDir, 'dest_dir')
+        'repositoryDir': 'repo_dir',
+        'generatedSiteDir': 'dest_dir'
       };
 
-      cloneDir = path.join(filesHelper.dirs.testRepoDir, 'repo_dir/foo');
-      outputDir = path.join(filesHelper.dirs.testRepoDir, 'dest_dir/foo');
+      cloneDir = path.join('repo_dir/foo');
+      outputDir = path.join('dest_dir/foo');
       buildLog = path.join(outputDir, 'build.log');
     });
 
-    beforeEach(function(done) {
+    beforeEach(function() {
       webhook = { on: sinon.spy() };
-      fs.mkdir(filesHelper.dirs.testRepoDir, function(err) {
-        if (err) { return done(err); }
-        fs.mkdir(builderConfig.repositoryDir, function(err) {
-          if (err) { return done(err); }
-          fs.mkdir(builderConfig.generatedSiteDir, function(err) {
-            if (err) { return done(err); }
-            fs.mkdir(outputDir, done);
-          });
+      // Note that the site builder will not create the parent directory for
+      // the generated sites. That should be done before launching the server.
+      filesHelper.files.buildLog = buildLog;
+      return filesHelper.createDir('repo_dir')
+        .then(function() {
+          return filesHelper.createDir('dest_dir');
+        })
+        .then(function() {
+          return filesHelper.createDir(path.join('dest_dir', 'foo'));
         });
-      });
-    });
-
-    // The outer afterEach() will remove the testRepoDir.
-    afterEach(function(done) {
-      fs.unlink(buildLog, function() {
-        fs.rmdir(outputDir, function(err) {
-          if (err) { return done(err); }
-          fs.rmdir(builderConfig.generatedSiteDir, function(err) {
-            if (err) { return done(err); }
-            fs.rmdir(builderConfig.repositoryDir, done);
-          });
-        });
-      });
     });
 
     var captureLogs = function() {
@@ -258,9 +241,12 @@ describe('SiteBuilder', function() {
       sinon.stub(console, 'error').returns(null);
     };
 
-    var restoreLogs = function() {
-      console.error.restore();
-      console.log.restore();
+    var restoreLogs = function(err) {
+      return new Promise(function(resolve, reject) {
+        console.error.restore();
+        console.log.restore();
+        err ? reject(err) : resolve();
+      });
     };
 
     it('should create a function to launch a builder', function() {
@@ -280,58 +266,61 @@ describe('SiteBuilder', function() {
 
       mySpawn.setDefault(mySpawn.simple(0));
       captureLogs();
-      return handler(incomingPayload).should.be.fulfilled.then(function() {
-        var logMsgs = console.log.args,
-            errorMsgs = console.error.args,
-            expectedMessages = [
-              '18F/foo: starting build at commit deadbeef',
-              'description: Build me',
-              'timestamp: 2015-09-25',
-              'committer: michael.bland@gsa.gov',
-              'pusher: Mike Bland michael.bland@gsa.gov',
-              'sender: mbland',
-              'cloning foo into ' + cloneDir,
-              'foo: build successful'
-            ],
-            expectedLog = expectedMessages.join('\n') + '\n';
+      return handler(incomingPayload).should.be.fulfilled
+        .then(function() {
+          var logMsgs = console.log.args,
+              errorMsgs = console.error.args,
+              expectedMessages = [
+                '18F/foo: starting build at commit deadbeef',
+                'description: Build me',
+                'timestamp: 2015-09-25',
+                'committer: michael.bland@gsa.gov',
+                'pusher: Mike Bland michael.bland@gsa.gov',
+                'sender: mbland',
+                'cloning foo into ' + path.join(config.home, cloneDir),
+                'foo: build successful'
+              ],
+              expectedLog = expectedMessages.join('\n') + '\n';
 
-        restoreLogs();
-        expectLogMessages(logMsgs, expectedMessages);
-        expect(errorMsgs).to.be.empty;
-        expect(fs.readFileSync(buildLog, 'utf8')).to.equal(expectedLog);
-      });
+          expectLogMessages(logMsgs, expectedMessages);
+          expect(errorMsgs).to.be.empty;
+          expect(fs.readFileSync(path.join(config.home, buildLog), 'utf8'))
+            .to.equal(expectedLog);
+        })
+        .then(restoreLogs, restoreLogs);
     });
 
     it('should create a builder that fails to build the site', function() {
-      var handler = SiteBuilder.makeBuilderListener(webhook, builderConfig);
+      var handler = SiteBuilder.makeBuilderListener(webhook, builderConfig),
+          errMsg = 'Error: failed to clone foo ' +
+            'with exit code 1 from command: ' +
+            'git clone git@github.com:18F/foo.git --branch 18f-pages';
 
       mySpawn.setDefault(mySpawn.simple(1));
       captureLogs();
-      return handler(incomingPayload).should.be.fulfilled.then(function() {
-        var logMsgs = console.log.args,
-            errorMsgs = console.error.args,
-            expectedMessages = [
-              '18F/foo: starting build at commit deadbeef',
-              'description: Build me',
-              'timestamp: 2015-09-25',
-              'committer: michael.bland@gsa.gov',
-              'pusher: Mike Bland michael.bland@gsa.gov',
-              'sender: mbland',
-              'cloning foo into ' + cloneDir
-            ],
-            expectedErrors = [
-              'Error: failed to clone foo with exit code 1 from command: ' +
-                'git clone git@github.com:18F/foo.git --branch 18f-pages',
-              'foo: build failed'
-            ],
-            expectedLog = expectedMessages.concat(expectedErrors)
-              .join('\n') + '\n';
+      return handler(incomingPayload).should.be.rejectedWith(errMsg)
+        .then(function() {
+          var logMsgs = console.log.args,
+              errorMsgs = console.error.args,
+              expectedMessages = [
+                '18F/foo: starting build at commit deadbeef',
+                'description: Build me',
+                'timestamp: 2015-09-25',
+                'committer: michael.bland@gsa.gov',
+                'pusher: Mike Bland michael.bland@gsa.gov',
+                'sender: mbland',
+                'cloning foo into ' + path.join(config.home, cloneDir)
+              ],
+              expectedErrors = [errMsg, 'foo: build failed'],
+              expectedLog = expectedMessages.concat(expectedErrors)
+                .join('\n') + '\n';
 
-        restoreLogs();
-        expectLogMessages(logMsgs, expectedMessages);
-        expectLogMessages(errorMsgs, expectedErrors);
-        expect(fs.readFileSync(buildLog, 'utf8')).to.equal(expectedLog);
-      });
+          expectLogMessages(logMsgs, expectedMessages);
+          expectLogMessages(errorMsgs, expectedErrors);
+          expect(fs.readFileSync(path.join(config.home, buildLog), 'utf8'))
+            .to.equal(expectedLog);
+        })
+        .then(restoreLogs, restoreLogs);
     });
 
     it('should ignore payloads from other organizations', function() {
