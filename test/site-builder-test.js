@@ -24,7 +24,6 @@ describe('SiteBuilder', function() {
 
   function cloneConfig() {
     config = JSON.parse(JSON.stringify(OrigConfig));
-    config.home = '';
     config.git = 'git';
     config.bundler = 'bundle';
     config.jekyll = 'jekyll';
@@ -103,6 +102,7 @@ describe('SiteBuilder', function() {
         .returns(Promise.resolve());
       sinon.stub(builder.configHandler, 'removeGeneratedConfig')
         .returns(Promise.resolve());
+      sinon.stub(builder.sync, 'sync').returns(Promise.resolve());
       sinon.stub(builder.updateLock, 'doLockedOperation')
         .returns(Promise.resolve());
     });
@@ -127,6 +127,9 @@ describe('SiteBuilder', function() {
           builder.jekyllHelper.build.args.should.eql([
             [buildConfigs, { bundler: false }]
           ]);
+          builder.sync.sync.args.should.eql([
+            [path.join(config.home, 'dest_dir/repo_name')]
+          ]);
           builder.configHandler.removeGeneratedConfig.called.should.be.true;
         });
     });
@@ -146,22 +149,27 @@ describe('SiteBuilder', function() {
           builder.jekyllHelper.build.args.should.eql([
             [buildConfigs, { bundler: true }]
           ]);
+          builder.sync.sync.args.should.eql([
+            [path.join(config.home, 'dest_dir/repo_name')]
+          ]);
           builder.configHandler.removeGeneratedConfig.called.should.be.true;
         });
     });
 
     it('should perform a successful rsync build', function() {
+      var buildDestination = path.join(config.home, 'dest_dir/repo_name');
+
       builder.configHandler.usesJekyll = false;
       builder.configHandler.usesBundler = false;
-      builder.configHandler.buildDestination = 'dest_dir';
 
       return runBuild().should.be.fulfilled
         .then(function() {
           builder.gitRunner.prepareRepo.args.should.eql([[builder.branch]]);
           builder.configHandler.init.called.should.be.true;
           builder.commandRunner.run.args.should.eql([
-            [config.rsync, config.rsyncOpts.concat(['./', 'dest_dir'])]
+            [config.rsync, config.rsyncOpts.concat(['./', buildDestination])]
           ]);
+          builder.sync.sync.args.should.eql([[buildDestination]]);
           builder.configHandler.readOrWriteConfig.called.should.be.false;
           builder.jekyllHelper.build.called.should.be.false;
           builder.configHandler.removeGeneratedConfig.called.should.be.false;
@@ -178,6 +186,7 @@ describe('SiteBuilder', function() {
           builder.commandRunner.run.called.should.be.false;
           builder.configHandler.readOrWriteConfig.called.should.be.false;
           builder.jekyllHelper.build.called.should.be.false;
+          builder.sync.sync.called.should.be.false;
           builder.configHandler.removeGeneratedConfig.called.should.be.false;
         });
     });
@@ -287,6 +296,8 @@ describe('SiteBuilder', function() {
                 'pusher: Mike Bland michael.bland@gsa.gov',
                 'sender: mbland',
                 'cloning foo into ' + path.join(config.home, cloneDir),
+                'syncing to ' + config.s3.bucket + '/' +
+                  outputDir.replace(/\\/g, '/'),
                 'foo: build successful'
               ],
               expectedLog = expectedMessages.join('\n') + '\n';
