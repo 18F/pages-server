@@ -10,8 +10,11 @@ module.exports = FilesHelper;
 function FilesHelper() {
 }
 
-FilesHelper.prototype.init = function(config) {
+FilesHelper.prototype.init = function() {
   var helper = this;
+
+  this.dirs = [];
+  this.files = [];
 
   return new Promise(function(resolve, reject) {
     temp.mkdir(scriptName + '-test-files-', function(err, tempDir) {
@@ -19,37 +22,15 @@ FilesHelper.prototype.init = function(config) {
         return reject(err);
       }
       helper.tempDir = tempDir;
-      config.home = tempDir;
-      initHelper(helper, config);
       resolve();
     });
   });
 };
 
-function initHelper(helper, config) {
-  helper.dirs = [];
-
-  helper.files = {
-    gemfile: 'Gemfile',
-    pagesConfig: config.pagesConfig,
-    configYml: '_config.yml',
-    internalConfig: '_config_internal.yml',
-    externalConfig: '_config_external.yml'
-  };
-
-  helper.filesToDelete = [];
-}
-
 FilesHelper.prototype.afterEach = function() {
-  var helper = this,
-      files = helper.filesToDelete.slice();
+  var helper = this;
 
-  helper.filesToDelete = [];
-  files = files.concat(Object.keys(helper.files).map(function(key) {
-    return helper.files[key];
-  }));
-
-  return removeItems(this.tempDir, files, 'unlink')
+  return removeItems(this.tempDir, this.files, 'unlink')
     .then(function() {
       return removeItems(helper.tempDir, helper.dirs.reverse(), 'rmdir');
     });
@@ -71,14 +52,6 @@ FilesHelper.prototype.createDir = function(dirName) {
       resolve();
     });
   });
-};
-
-FilesHelper.prototype.removeFile = function(filename) {
-  return removeItem(this.tempDir, filename, 'unlink');
-};
-
-FilesHelper.prototype.removeDir = function(dirname) {
-  return removeItem(this.tempDir, dirname, 'rmdir');
 };
 
 function removeItems(parentDir, items, operation) {

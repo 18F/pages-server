@@ -20,7 +20,7 @@ chai.should();
 chai.use(chaiAsPromised);
 
 describe('SiteBuilder', function() {
-  var config, origSpawn, mySpawn, logger, filesHelper, expectLogMessages;
+  var config, origSpawn, mySpawn, logger, expectLogMessages;
 
   function cloneConfig() {
     config = JSON.parse(JSON.stringify(OrigConfig));
@@ -34,12 +34,6 @@ describe('SiteBuilder', function() {
   before(function() {
     cloneConfig();
     SiteBuilder.setConfiguration(config);
-    filesHelper = new FilesHelper();
-    return filesHelper.init(config);
-  });
-
-  after(function() {
-    return filesHelper.after();
   });
 
   beforeEach(function() {
@@ -51,7 +45,6 @@ describe('SiteBuilder', function() {
 
   afterEach(function() {
     childProcess.spawn = origSpawn;
-    return filesHelper.afterEach();
   });
 
   var makeOpts = function() {
@@ -191,7 +184,8 @@ describe('SiteBuilder', function() {
   });
 
   describe('makeBuilderListener and launchBuilder', function() {
-    var webhook, incomingPayload, builderConfig, cloneDir, outputDir, buildLog;
+    var webhook, incomingPayload, builderConfig, cloneDir, outputDir, buildLog,
+        filesHelper;
 
     before(function() {
       incomingPayload = {
@@ -220,13 +214,24 @@ describe('SiteBuilder', function() {
       cloneDir = path.join('repo_dir/foo');
       outputDir = path.join('dest_dir/foo');
       buildLog = path.join(outputDir, 'build.log');
+
+      filesHelper = new FilesHelper();
+      return filesHelper.init(config)
+        .then(function() {
+          config.home = filesHelper.tempDir;
+        });
+    });
+
+    after(function() {
+      return filesHelper.after();
     });
 
     beforeEach(function() {
       webhook = { on: sinon.spy() };
+      filesHelper.files.push(buildLog);
+
       // Note that the site builder will not create the parent directory for
       // the generated sites. That should be done before launching the server.
-      filesHelper.files.buildLog = buildLog;
       return filesHelper.createDir('repo_dir')
         .then(function() {
           return filesHelper.createDir('dest_dir');
@@ -234,6 +239,10 @@ describe('SiteBuilder', function() {
         .then(function() {
           return filesHelper.createDir(path.join('dest_dir', 'foo'));
         });
+    });
+
+    afterEach(function() {
+      return filesHelper.afterEach();
     });
 
     var captureLogs = function() {
