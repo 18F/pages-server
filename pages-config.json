@@ -8,6 +8,10 @@
   "rsyncOpts":        [
     "-vaxp", "--delete", "--ignore-errors", "--exclude=.[A-Za-z0-9]*"
   ],
+  "s3": {
+    "awscli": "/usr/local/18f/pyenv/shims/aws",
+    "bucket":  "s3://18f-pages"
+  },
   "payloadLimit":     1048576,
   "githubOrg":        "18F",
   "pagesConfig":      "_config_18f_pages.yml",
