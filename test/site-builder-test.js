@@ -55,10 +55,6 @@ describe('SiteBuilder', function() {
     return filesHelper.afterEach();
   });
 
-  var check = function(done, cb) {
-    return function(err) { try { cb(err); done(); } catch (e) { done(e); } };
-  };
-
   var makeOpts = function() {
     var info = {
       repository: {
@@ -268,19 +264,23 @@ describe('SiteBuilder', function() {
     };
 
     it('should create a function to launch a builder', function() {
-      SiteBuilder.makeBuilderListener(webhook, builderConfig);
+      var handler = SiteBuilder.makeBuilderListener(webhook, builderConfig);
+      expect(handler).to.be.a.Function;
       expect(webhook.on.calledTwice).to.be.true;
       expect(webhook.on.args[0].length).to.equal(2);
       expect(webhook.on.args[0][0]).to.equal('create');
-      expect(webhook.on.args[1][0]).to.equal('push');
+      expect(webhook.on.args[0][1]).to.be.handler;
       expect(webhook.on.args[1].length).to.equal(2);
-      expect(webhook.on.args[0][1]).to.be.a.Function;
-      expect(webhook.on.args[1][1]).to.be.a.Function;
-      expect(webhook.on.args[0][1]).to.equal(webhook.on.args[1][1]);
+      expect(webhook.on.args[1][0]).to.equal('push');
+      expect(webhook.on.args[1][1]).to.be.handler;
     });
 
-    it('should create a builder that builds the site', function(done) {
-      var checkResult = check(done, function(err) {
+    it('should create a builder that builds the site', function() {
+      var handler = SiteBuilder.makeBuilderListener(webhook, builderConfig);
+
+      mySpawn.setDefault(mySpawn.simple(0));
+      captureLogs();
+      return handler(incomingPayload).should.be.fulfilled.then(function() {
         var logMsgs = console.log.args,
             errorMsgs = console.error.args,
             expectedMessages = [
@@ -296,21 +296,18 @@ describe('SiteBuilder', function() {
             expectedLog = expectedMessages.join('\n') + '\n';
 
         restoreLogs();
-        expect(err).to.be.null;
         expectLogMessages(logMsgs, expectedMessages);
         expect(errorMsgs).to.be.empty;
         expect(fs.readFileSync(buildLog, 'utf8')).to.equal(expectedLog);
       });
-
-      SiteBuilder.makeBuilderListener(webhook, builderConfig, checkResult);
-      var launcher = webhook.on.args[0][1];
-      mySpawn.setDefault(mySpawn.simple(0));
-      captureLogs();
-      launcher(incomingPayload);
     });
 
-    it('should create a builder that fails to build the site', function(done) {
-      var checkResult = check(done, function(err) {
+    it('should create a builder that fails to build the site', function() {
+      var handler = SiteBuilder.makeBuilderListener(webhook, builderConfig);
+
+      mySpawn.setDefault(mySpawn.simple(1));
+      captureLogs();
+      return handler(incomingPayload).should.be.fulfilled.then(function() {
         var logMsgs = console.log.args,
             errorMsgs = console.error.args,
             expectedMessages = [
@@ -331,29 +328,16 @@ describe('SiteBuilder', function() {
               .join('\n') + '\n';
 
         restoreLogs();
-        expect(err).to.be.null;
         expectLogMessages(logMsgs, expectedMessages);
         expectLogMessages(errorMsgs, expectedErrors);
         expect(fs.readFileSync(buildLog, 'utf8')).to.equal(expectedLog);
       });
-
-      SiteBuilder.makeBuilderListener(webhook, builderConfig, checkResult);
-      var launcher = webhook.on.args[0][1];
-      mySpawn.setDefault(mySpawn.simple(1));
-      captureLogs();
-      launcher(incomingPayload);
     });
 
     it('should ignore payloads from other organizations', function() {
-      SiteBuilder.makeBuilderListener(webhook, builderConfig);
-      var launcher = webhook.on.args[0][1];
-      sinon.spy(SiteBuilder, 'launchBuilder');
-      var internalLauncher = SiteBuilder.launchBuilder;
-
+      var handler = SiteBuilder.makeBuilderListener(webhook, builderConfig);
       incomingPayload.repository.organization = 'not18F';
-      launcher(incomingPayload);
-      SiteBuilder.launchBuilder.restore();
-      expect(internalLauncher.called).to.be.false;
+      expect(handler(incomingPayload)).to.be.undefined;
     });
   });
 });
