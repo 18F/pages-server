@@ -28,6 +28,7 @@ describe('SiteBuilder', function() {
     config.home = '';
     config.git = 'git';
     config.bundler = 'bundle';
+    config.bundlerCacheDir = 'bundler_cache_dir';
     config.jekyll = 'jekyll';
     config.rsync = 'rsync';
   }
@@ -155,7 +156,9 @@ describe('SiteBuilder', function() {
           builder.gitRunner.prepareRepo.args.should.eql([[builder.branch]]);
           builder.configHandler.init.called.should.be.true;
           builder.commandRunner.run.args.should.eql([
-            [config.bundler, ['install']]
+            [config.bundler,
+             ['install',
+              '--path=' + path.join(config.home, config.bundlerCacheDir)]]
           ]);
           builder.configHandler.readOrWriteConfig.called.should.be.true;
           builder.jekyllHelper.build.args.should.eql([

@@ -1,12 +1,16 @@
 {
   "port":             5000,
-  "home":             "/home/ubuntu",
+  "home":             "/usr/local/18f/pages",
   "git":              "/usr/bin/git",
-  "bundler":          "/usr/local/rbenv/shims/bundle",
-  "jekyll":           "/usr/local/rbenv/shims/jekyll",
+  "bundler":          "/usr/local/18f/rbenv/shims/bundle",
+  "bundlerCacheDir":  "bundler-cache",
+  "jekyll":           "/usr/local/18f/rbenv/shims/jekyll",
   "rsync":            "/usr/bin/rsync",
   "rsyncOpts":        [
-    "-vaxp", "--delete", "--ignore-errors", "--exclude=.[A-Za-z0-9]*"
+    "-vaxp",
+    "--delete",
+    "--ignore-errors",
+    "--exclude=.[A-Za-z0-9]*"
   ],
   "payloadLimit":     1048576,
   "githubOrg":        "18F",
@@ -15,29 +19,29 @@
   "assetRoot":        "/guides-template",
   "fileLockWaitTime": 30000,
   "fileLockPollTime": 1000,
-  "secretKeyFile":    "/home/ubuntu/.18f-pages.secret",
+  "secretKeyFile":    "/usr/local/18f/pages/config/pages.secret",
   "builders": [
     {
       "branch":           "18f-pages",
-      "repositoryDir":    "pages-repos",
-      "generatedSiteDir": "pages-generated",
-      "internalSiteDir":  "pages-internal"
+      "repositoryDir":    "repos/pages.18f.gov",
+      "generatedSiteDir": "sites/pages.18f.gov",
+      "internalSiteDir":  "sites/pages-internal.18f.gov"
     },
     {
       "branch":           "18f-pages-staging",
-      "repositoryDir":    "pages-repos-staging",
-      "generatedSiteDir": "pages-staging",
-      "internalSiteDir":  "pages-internal"
+      "repositoryDir":    "repos/pages-staging.18f.gov",
+      "generatedSiteDir": "sites/pages-staging.18f.gov",
+      "internalSiteDir":  "sites/pages-internal.18f.gov"
     },
     {
       "branch":           "18f-pages-internal",
-      "repositoryDir":    "pages-repos-internal",
-      "generatedSiteDir": "pages-internal"
+      "repositoryDir":    "repos/pages-internal.18f.gov",
+      "generatedSiteDir": "sites/pages-internal.18f.gov"
     },
     {
-      "branchInUrlPattern": "v[0-9]+.[0-9]+.[0-9]*[a-z]+",
-      "repositoryDir":      "pages-repos-releases",
-      "generatedSiteDir":   "pages-releases"
+      "branchInUrlPattern": "v[0-9]+.[0-9]+.[0-9]*[a-z]*",
+      "repositoryDir":      "repos/pages-releases.18f.gov",
+      "generatedSiteDir":   "sites/pages-releases.18f.gov"
     }
   ]
 }
