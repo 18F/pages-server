@@ -268,6 +268,16 @@ describe('ConfigHandler', function() {
         'Malformed inline YAML string ("bar: baz)');
     });
 
+    it('should reject baseurl with relative components', function() {
+      fileHandler.exists.withArgs(pagesConfig.pagesYaml)
+        .returns(Promise.resolve(true));
+      fileHandler.readFile.withArgs(pagesConfig.pagesYaml)
+        .returns(Promise.resolve('baseurl: ../dest_dir_not'));
+
+      return handler.init().should.be.rejectedWith(
+        'Error: baseurl contains relative components: ../dest_dir_not');
+    });
+
     it('should not detect YAML file presence if not configured', function() {
       // This can happen if the pages-config.json file does not have 
       // a pagesYaml property defined.
@@ -332,6 +342,14 @@ describe('ConfigHandler', function() {
         'baseurl:   /new-destination   \n');
       handler.buildDestination.should.equal(
         path.join('dest_dir/new-destination'));
+    });
+
+    it('should fail if the baseurl contains relative components', function() {
+      var parse = function() {
+        handler.parseDestinationFromConfigData('baseurl:   ../dest_dir_not');
+      };
+      expect(parse).to.throw(
+        Error, 'baseurl contains relative components: ../dest_dir_not');
     });
   });
 
