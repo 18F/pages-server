@@ -221,6 +221,7 @@ illustrates each of the following settings:
 * **home**: the parent directory for all of the generated site content
 * **git**:  path to `git` on the host machine
 * **bundler**: path to `bundle` on the host machine
+* **bundlerCacheDir**: path to bundle cache relative to **home**
 * **jekyll**:  path to `jekyll` on the host machine
 * **rsync**: path to `rsync` on the host machine
 * **rsyncOpts**: options to pass to `rsync` that control Jekyll-less builds;
@@ -255,11 +256,11 @@ illustrates each of the following settings:
   each item contains the following fields, _each of which must contain a
   unique value relative to all other `builders` entries_:
   * **branch**: the publishing branch from which to generate sites
-  * **repositoryDir**: the directory within `home` into which all repositories
+  * **repositoryDir**: the directory within **home** into which all repositories
     will be cloned
-  * **generatedSiteDir**: the directory within `home` into which all sites
+  * **generatedSiteDir**: the directory within **home** into which all sites
     will be generated
-  * **internalSiteDir**: the directory within `home` into which internal views
+  * **internalSiteDir**: the directory within **home** into which internal views
     of sites will be generated
 
 Also, each `builders` entry may override one or more of the following
