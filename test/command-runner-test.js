@@ -21,7 +21,7 @@ describe('CommandRunner', function() {
   it('should pass stdout to the logger and exit normally', function() {
     return runner.run('node', [TEST_COMMAND, 'foo', 'bar', 'baz'])
       .should.be.fulfilled.then(function() {
-        fakeLogger.log.args.should.eql([['foo bar baz\n']]);
+        fakeLogger.log.args.should.eql([['foo bar baz']]);
         sinon.assert.notCalled(fakeLogger.error);
       });
   });
@@ -33,7 +33,7 @@ describe('CommandRunner', function() {
       .then(function() {
         sinon.assert.notCalled(fakeLogger.log);
         fakeLogger.error.args.should.eql(
-          [['no arguments passed on the command line\n']]);
+          [['no arguments passed on the command line']]);
       });
   });
 });
