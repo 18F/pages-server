@@ -4,7 +4,6 @@ var SiteBuilder = require('../lib/site-builder');
 var Options = require('../lib/options');
 var BuildLogger = require('../lib/build-logger');
 var ComponentFactory = require('../lib/component-factory');
-var FileLockedOperation = require('file-locked-operation');
 var fs = require('fs');
 var path = require('path');
 var chai = require('chai');
@@ -21,11 +20,10 @@ chai.should();
 chai.use(chaiAsPromised);
 
 describe('SiteBuilder', function() {
-  var config, origSpawn, mySpawn, logger, filesHelper, expectLogMessages;
+  var config, origSpawn, mySpawn, logger, expectLogMessages;
 
   function cloneConfig() {
     config = JSON.parse(JSON.stringify(OrigConfig));
-    config.home = '';
     config.git = 'git';
     config.bundler = 'bundle';
     config.bundlerCacheDir = 'bundler_cache_dir';
@@ -36,12 +34,6 @@ describe('SiteBuilder', function() {
   before(function() {
     cloneConfig();
     SiteBuilder.setConfiguration(config);
-    filesHelper = new FilesHelper();
-    return filesHelper.init(config);
-  });
-
-  after(function() {
-    return filesHelper.after();
   });
 
   beforeEach(function() {
@@ -53,12 +45,7 @@ describe('SiteBuilder', function() {
 
   afterEach(function() {
     childProcess.spawn = origSpawn;
-    return filesHelper.afterEach();
   });
-
-  var check = function(done, cb) {
-    return function(err) { try { cb(err); done(); } catch (e) { done(e); } };
-  };
 
   var makeOpts = function() {
     var info = {
@@ -81,10 +68,7 @@ describe('SiteBuilder', function() {
         targetBranch = branch || '18f-pages',
         components;
 
-    opts.sitePath = filesHelper.dirs.testRepoDir;
     components = new ComponentFactory(config, opts, targetBranch, logger);
-    components.updateLock = new FileLockedOperation(
-      filesHelper.files.lockfilePath);
     return new SiteBuilder(targetBranch, components);
   };
 
@@ -101,7 +85,7 @@ describe('SiteBuilder', function() {
     beforeEach(function() {
       builder = makeBuilder();
       buildConfigs = [{
-        destination: 'dest_dir',
+        destination: path.join(config.home, 'dest_dir/repo_name'),
         configurations: '_config.yml,' + config.pagesConfig
       }];
 
@@ -119,6 +103,7 @@ describe('SiteBuilder', function() {
         .returns(Promise.resolve());
       sinon.stub(builder.configHandler, 'removeGeneratedConfig')
         .returns(Promise.resolve());
+      sinon.stub(builder.sync, 'sync').returns(Promise.resolve());
       sinon.stub(builder.updateLock, 'doLockedOperation')
         .returns(Promise.resolve());
     });
@@ -143,6 +128,9 @@ describe('SiteBuilder', function() {
           builder.jekyllHelper.build.args.should.eql([
             [buildConfigs, { bundler: false }]
           ]);
+          builder.sync.sync.args.should.eql([
+            [path.join(config.home, 'dest_dir/repo_name')]
+          ]);
           builder.configHandler.removeGeneratedConfig.called.should.be.true;
         });
     });
@@ -164,22 +152,27 @@ describe('SiteBuilder', function() {
           builder.jekyllHelper.build.args.should.eql([
             [buildConfigs, { bundler: true }]
           ]);
+          builder.sync.sync.args.should.eql([
+            [path.join(config.home, 'dest_dir/repo_name')]
+          ]);
           builder.configHandler.removeGeneratedConfig.called.should.be.true;
         });
     });
 
     it('should perform a successful rsync build', function() {
+      var buildDestination = path.join(config.home, 'dest_dir/repo_name');
+
       builder.configHandler.usesJekyll = false;
       builder.configHandler.usesBundler = false;
-      builder.configHandler.buildDestination = 'dest_dir';
 
       return runBuild().should.be.fulfilled
         .then(function() {
           builder.gitRunner.prepareRepo.args.should.eql([[builder.branch]]);
           builder.configHandler.init.called.should.be.true;
           builder.commandRunner.run.args.should.eql([
-            [config.rsync, config.rsyncOpts.concat(['./', 'dest_dir'])]
+            [config.rsync, config.rsyncOpts.concat(['./', buildDestination])]
           ]);
+          builder.sync.sync.args.should.eql([[buildDestination]]);
           builder.configHandler.readOrWriteConfig.called.should.be.false;
           builder.jekyllHelper.build.called.should.be.false;
           builder.configHandler.removeGeneratedConfig.called.should.be.false;
@@ -196,13 +189,15 @@ describe('SiteBuilder', function() {
           builder.commandRunner.run.called.should.be.false;
           builder.configHandler.readOrWriteConfig.called.should.be.false;
           builder.jekyllHelper.build.called.should.be.false;
+          builder.sync.sync.called.should.be.false;
           builder.configHandler.removeGeneratedConfig.called.should.be.false;
         });
     });
   });
 
   describe('makeBuilderListener and launchBuilder', function() {
-    var webhook, incomingPayload, builderConfig, cloneDir, outputDir, buildLog;
+    var webhook, incomingPayload, builderConfig, cloneDir, outputDir, buildLog,
+        filesHelper;
 
     before(function() {
       incomingPayload = {
@@ -224,40 +219,42 @@ describe('SiteBuilder', function() {
 
       builderConfig = {
         'branch': '18f-pages',
-        'repositoryDir': path.join(filesHelper.dirs.testRepoDir, 'repo_dir'),
-        'generatedSiteDir': path.join(filesHelper.dirs.testRepoDir, 'dest_dir')
+        'repositoryDir': 'repo_dir',
+        'generatedSiteDir': 'dest_dir'
       };
 
-      cloneDir = path.join(filesHelper.dirs.testRepoDir, 'repo_dir/foo');
-      outputDir = path.join(filesHelper.dirs.testRepoDir, 'dest_dir/foo');
+      cloneDir = path.join('repo_dir/foo');
+      outputDir = path.join('dest_dir/foo');
       buildLog = path.join(outputDir, 'build.log');
+
+      filesHelper = new FilesHelper();
+      return filesHelper.init(config)
+        .then(function() {
+          config.home = filesHelper.tempDir;
+        });
     });
 
-    beforeEach(function(done) {
+    after(function() {
+      return filesHelper.after();
+    });
+
+    beforeEach(function() {
       webhook = { on: sinon.spy() };
-      fs.mkdir(filesHelper.dirs.testRepoDir, function(err) {
-        if (err) { return done(err); }
-        fs.mkdir(builderConfig.repositoryDir, function(err) {
-          if (err) { return done(err); }
-          fs.mkdir(builderConfig.generatedSiteDir, function(err) {
-            if (err) { return done(err); }
-            fs.mkdir(outputDir, done);
-          });
+      filesHelper.files.push(buildLog);
+
+      // Note that the site builder will not create the parent directory for
+      // the generated sites. That should be done before launching the server.
+      return filesHelper.createDir('repo_dir')
+        .then(function() {
+          return filesHelper.createDir('dest_dir');
+        })
+        .then(function() {
+          return filesHelper.createDir(path.join('dest_dir', 'foo'));
         });
-      });
     });
 
-    // The outer afterEach() will remove the testRepoDir.
-    afterEach(function(done) {
-      fs.unlink(buildLog, function() {
-        fs.rmdir(outputDir, function(err) {
-          if (err) { return done(err); }
-          fs.rmdir(builderConfig.generatedSiteDir, function(err) {
-            if (err) { return done(err); }
-            fs.rmdir(builderConfig.repositoryDir, done);
-          });
-        });
-      });
+    afterEach(function() {
+      return filesHelper.afterEach();
     });
 
     var captureLogs = function() {
@@ -265,98 +262,94 @@ describe('SiteBuilder', function() {
       sinon.stub(console, 'error').returns(null);
     };
 
-    var restoreLogs = function() {
-      console.error.restore();
-      console.log.restore();
+    var restoreLogs = function(err) {
+      return new Promise(function(resolve, reject) {
+        console.error.restore();
+        console.log.restore();
+        err ? reject(err) : resolve();
+      });
     };
 
     it('should create a function to launch a builder', function() {
-      SiteBuilder.makeBuilderListener(webhook, builderConfig);
+      var handler = SiteBuilder.makeBuilderListener(webhook, builderConfig);
+      expect(handler).to.be.a.Function;
       expect(webhook.on.calledTwice).to.be.true;
       expect(webhook.on.args[0].length).to.equal(2);
       expect(webhook.on.args[0][0]).to.equal('create');
-      expect(webhook.on.args[1][0]).to.equal('push');
+      expect(webhook.on.args[0][1]).to.be.handler;
       expect(webhook.on.args[1].length).to.equal(2);
-      expect(webhook.on.args[0][1]).to.be.a.Function;
-      expect(webhook.on.args[1][1]).to.be.a.Function;
-      expect(webhook.on.args[0][1]).to.equal(webhook.on.args[1][1]);
+      expect(webhook.on.args[1][0]).to.equal('push');
+      expect(webhook.on.args[1][1]).to.be.handler;
     });
 
-    it('should create a builder that builds the site', function(done) {
-      var checkResult = check(done, function(err) {
-        var logMsgs = console.log.args,
-            errorMsgs = console.error.args,
-            expectedMessages = [
-              '18F/foo: starting build at commit deadbeef',
-              'description: Build me',
-              'timestamp: 2015-09-25',
-              'committer: michael.bland@gsa.gov',
-              'pusher: Mike Bland michael.bland@gsa.gov',
-              'sender: mbland',
-              'cloning foo into ' + cloneDir,
-              'foo: build successful'
-            ],
-            expectedLog = expectedMessages.join('\n') + '\n';
+    it('should create a builder that builds the site', function() {
+      var handler = SiteBuilder.makeBuilderListener(webhook, builderConfig);
 
-        restoreLogs();
-        expect(err).to.be.null;
-        expectLogMessages(logMsgs, expectedMessages);
-        expect(errorMsgs).to.be.empty;
-        expect(fs.readFileSync(buildLog, 'utf8')).to.equal(expectedLog);
-      });
-
-      SiteBuilder.makeBuilderListener(webhook, builderConfig, checkResult);
-      var launcher = webhook.on.args[0][1];
       mySpawn.setDefault(mySpawn.simple(0));
       captureLogs();
-      launcher(incomingPayload);
+      return handler(incomingPayload).should.be.fulfilled
+        .then(function() {
+          var logMsgs = console.log.args,
+              errorMsgs = console.error.args,
+              expectedMessages = [
+                '18F/foo: starting build at commit deadbeef',
+                'description: Build me',
+                'timestamp: 2015-09-25',
+                'committer: michael.bland@gsa.gov',
+                'pusher: Mike Bland michael.bland@gsa.gov',
+                'sender: mbland',
+                'cloning foo into ' + path.join(config.home, cloneDir),
+                'syncing to ' + config.s3.bucket + '/' +
+                  outputDir.replace(/\\/g, '/'),
+                'foo: build successful'
+              ],
+              expectedLog = expectedMessages.join('\n') + '\n';
+
+          expectLogMessages(logMsgs, expectedMessages);
+          expect(errorMsgs).to.be.empty;
+          expect(fs.readFileSync(path.join(config.home, buildLog), 'utf8'))
+            .to.equal(expectedLog);
+        })
+        .then(restoreLogs, restoreLogs);
     });
 
-    it('should create a builder that fails to build the site', function(done) {
-      var checkResult = check(done, function(err) {
-        var logMsgs = console.log.args,
-            errorMsgs = console.error.args,
-            expectedMessages = [
-              '18F/foo: starting build at commit deadbeef',
-              'description: Build me',
-              'timestamp: 2015-09-25',
-              'committer: michael.bland@gsa.gov',
-              'pusher: Mike Bland michael.bland@gsa.gov',
-              'sender: mbland',
-              'cloning foo into ' + cloneDir
-            ],
-            expectedErrors = [
-              'Error: failed to clone foo with exit code 1 from command: ' +
-                'git clone git@github.com:18F/foo.git --branch 18f-pages',
-              'foo: build failed'
-            ],
-            expectedLog = expectedMessages.concat(expectedErrors)
-              .join('\n') + '\n';
+    it('should create a builder that fails to build the site', function() {
+      var handler = SiteBuilder.makeBuilderListener(webhook, builderConfig),
+          errMsg = 'Error: failed to clone foo ' +
+            'with exit code 1 from command: ' +
+            'git clone git@github.com:18F/foo.git --branch 18f-pages';
 
-        restoreLogs();
-        expect(err).to.be.null;
-        expectLogMessages(logMsgs, expectedMessages);
-        expectLogMessages(errorMsgs, expectedErrors);
-        expect(fs.readFileSync(buildLog, 'utf8')).to.equal(expectedLog);
-      });
-
-      SiteBuilder.makeBuilderListener(webhook, builderConfig, checkResult);
-      var launcher = webhook.on.args[0][1];
       mySpawn.setDefault(mySpawn.simple(1));
       captureLogs();
-      launcher(incomingPayload);
+      return handler(incomingPayload).should.be.rejectedWith(errMsg)
+        .then(function() {
+          var logMsgs = console.log.args,
+              errorMsgs = console.error.args,
+              expectedMessages = [
+                '18F/foo: starting build at commit deadbeef',
+                'description: Build me',
+                'timestamp: 2015-09-25',
+                'committer: michael.bland@gsa.gov',
+                'pusher: Mike Bland michael.bland@gsa.gov',
+                'sender: mbland',
+                'cloning foo into ' + path.join(config.home, cloneDir)
+              ],
+              expectedErrors = [errMsg, 'foo: build failed'],
+              expectedLog = expectedMessages.concat(expectedErrors)
+                .join('\n') + '\n';
+
+          expectLogMessages(logMsgs, expectedMessages);
+          expectLogMessages(errorMsgs, expectedErrors);
+          expect(fs.readFileSync(path.join(config.home, buildLog), 'utf8'))
+            .to.equal(expectedLog);
+        })
+        .then(restoreLogs, restoreLogs);
     });
 
     it('should ignore payloads from other organizations', function() {
-      SiteBuilder.makeBuilderListener(webhook, builderConfig);
-      var launcher = webhook.on.args[0][1];
-      sinon.spy(SiteBuilder, 'launchBuilder');
-      var internalLauncher = SiteBuilder.launchBuilder;
-
+      var handler = SiteBuilder.makeBuilderListener(webhook, builderConfig);
       incomingPayload.repository.organization = 'not18F';
-      launcher(incomingPayload);
-      SiteBuilder.launchBuilder.restore();
-      expect(internalLauncher.called).to.be.false;
+      expect(handler(incomingPayload)).to.be.undefined;
     });
   });
 });

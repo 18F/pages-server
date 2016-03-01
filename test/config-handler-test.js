@@ -3,6 +3,7 @@
 var ConfigHandler = require('../lib/config-handler');
 var RepositoryFileHandler = require('../lib/repository-file-handler');
 var BuildLogger = require('../lib/build-logger');
+var Options = require('../lib/options');
 var pagesConfig = require('../pages-config.json');
 var path = require('path');
 var sinon = require('sinon');
@@ -17,18 +18,25 @@ describe('ConfigHandler', function() {
   var config, opts, handler, fileHandler, logger;
 
   before(function() {
-    config = JSON.parse(JSON.stringify(pagesConfig));
-    opts = {
-      pagesConfig: config.pagesConfig,
-      pagesYaml: config.pagesYaml,
-      repoName: 'repo_name',
-      destDir: 'dest_dir',
-      internalDestDir: 'internal_dest_dir',
-      assetRoot: '/guides-template',
-      branchInUrlPattern: ''
+    var payload, builderConfig;
+
+    payload = {
+      repository: {
+        name: 'repo_name'
+      },
+      ref: 'refs/heads/18f-pages'
     };
-    opts.sitePath = path.join('some/test/dir', opts.repoName);
-    fileHandler = new RepositoryFileHandler(opts);
+    config = JSON.parse(JSON.stringify(pagesConfig));
+    config.home = '/usr/local/18f/pages';
+    config.assetRoot = '/guides-template';
+    builderConfig = {
+      'branch': '18f-pages',
+      'repositoryDir': 'repo_dir',
+      'generatedSiteDir': 'dest_dir',
+      'internalSiteDir': 'internal_dest_dir'
+    };
+    opts = new Options(payload, config, builderConfig);
+    fileHandler = new RepositoryFileHandler(opts.sitePath);
     logger = new BuildLogger();
   });
 
@@ -70,7 +78,7 @@ describe('ConfigHandler', function() {
       return handler.init().should.be.fulfilled
         .then(function() {
           handler.buildConfigurations().should.eql([
-            { destination: path.join('dest_dir/repo_name'),
+            { destination: path.join(config.home, 'dest_dir/repo_name'),
               configurations: '_config.yml,' + config.pagesConfig
             }
           ]);
@@ -105,11 +113,12 @@ describe('ConfigHandler', function() {
       return handler.init().should.be.fulfilled
         .then(function() {
           handler.buildConfigurations().should.eql([
-            { destination: path.join('internal_dest_dir/repo_name'),
+            { destination: path.join(
+                config.home, 'internal_dest_dir/repo_name'),
               configurations: '_config.yml,_config_internal.yml,' +
                 config.pagesConfig
             },
-            { destination: path.join('dest_dir/repo_name'),
+            { destination: path.join(config.home, 'dest_dir/repo_name'),
               configurations: '_config.yml,' + config.pagesConfig
             }
           ]);
@@ -124,11 +133,12 @@ describe('ConfigHandler', function() {
       return handler.init().should.be.fulfilled
         .then(function() {
           handler.buildConfigurations().should.eql([
-            { destination: path.join('internal_dest_dir/repo_name'),
+            { destination: path.join(
+                config.home, 'internal_dest_dir/repo_name'),
               configurations: '_config.yml,_config_internal.yml,' +
                 config.pagesConfig
             },
-            { destination: path.join('dest_dir/repo_name'),
+            { destination: path.join(config.home, 'dest_dir/repo_name'),
               configurations: '_config.yml,_config_external.yml,' +
                 config.pagesConfig
             }
@@ -148,11 +158,12 @@ describe('ConfigHandler', function() {
       return handler.init().should.be.fulfilled
         .then(function() {
           handler.buildConfigurations().should.eql([
-            { destination: path.join('internal_dest_dir/repo_name/v0.9.0'),
+            { destination: path.join(config.home,
+                'internal_dest_dir/repo_name/v0.9.0'),
               configurations: '_config.yml,_config_internal.yml,' +
                 config.pagesConfig
             },
-            { destination: path.join('dest_dir/repo_name/v0.9.0'),
+            { destination: path.join(config.home, 'dest_dir/repo_name/v0.9.0'),
               configurations: '_config.yml,' + config.pagesConfig
             }
           ]);
@@ -208,7 +219,8 @@ describe('ConfigHandler', function() {
           handler.internalBuildDestination.should.eql(
             path.join(handler.internalDestDir, '/new-baseurl'));
           handler.buildConfigurations().should.eql([
-            { destination: path.join('dest_dir/new-baseurl/v0.9.0'),
+            { destination: path.join(
+              config.home, 'dest_dir/new-baseurl/v0.9.0'),
               configurations: '_config.yml,' + config.pagesConfig
             }
           ]);
@@ -242,7 +254,7 @@ describe('ConfigHandler', function() {
           handler.internalBuildDestination.should.eql(
             path.join(handler.internalDestDir, handler.repoName));
           handler.buildConfigurations().should.eql([
-            { destination: path.join('dest_dir', handler.repoName),
+            { destination: path.join(config.home, 'dest_dir', handler.repoName),
               configurations: '_config.yml,' + config.pagesConfig
             }
           ]);
@@ -279,7 +291,7 @@ describe('ConfigHandler', function() {
     });
 
     it('should not detect YAML file presence if not configured', function() {
-      // This can happen if the pages-config.json file does not have 
+      // This can happen if the pages-config.json file does not have
       // a pagesYaml property defined.
       fileHandler.exists.withArgs(undefined).throws();
       handler.pagesYaml = undefined;
@@ -298,50 +310,54 @@ describe('ConfigHandler', function() {
   describe('parseDestinationFromConfigData', function() {
     it('should keep the default destination if undefined', function() {
       handler.parseDestinationFromConfigData('');
-      handler.buildDestination.should.equal(path.join('dest_dir/repo_name'));
+      handler.buildDestination.should.equal(
+        path.join(config.home, 'dest_dir/repo_name'));
     });
 
     it('should keep the default destination if empty', function() {
       handler.parseDestinationFromConfigData('baseurl:\n');
-      handler.buildDestination.should.equal(path.join('dest_dir/repo_name'));
+      handler.buildDestination.should.equal(
+        path.join(config.home, 'dest_dir/repo_name'));
     });
 
     it('should keep the default destination if empty with spaces', function() {
       handler.parseDestinationFromConfigData('baseurl:   \n');
-      handler.buildDestination.should.equal(path.join('dest_dir/repo_name'));
+      handler.buildDestination.should.equal(
+        path.join(config.home, 'dest_dir/repo_name'));
     });
 
     it('should keep the default destination if set to root path', function() {
       handler.parseDestinationFromConfigData('baseurl: /\n');
-      handler.buildDestination.should.equal(path.join('dest_dir/repo_name'));
+      handler.buildDestination.should.equal(
+        path.join(config.home, 'dest_dir/repo_name'));
     });
 
     it('should set the destination from config data baseurl', function() {
       handler.parseDestinationFromConfigData('baseurl: /new-destination\n');
       handler.buildDestination.should.equal(
-        path.join('dest_dir/new-destination'));
+        path.join(config.home, 'dest_dir/new-destination'));
     });
 
     it('should set the internal destination from config data', function() {
-      handler.internalDestDir = 'internal_dest_dir';
+      handler.internalDestDir = path.join(config.home, 'internal_dest_dir');
       handler.parseDestinationFromConfigData('baseurl: /new-destination\n');
       handler.buildDestination.should.equal(
-        path.join('dest_dir/new-destination'));
+        path.join(config.home, 'dest_dir/new-destination'));
       handler.internalBuildDestination.should.equal(
-        path.join('internal_dest_dir/new-destination'));
+        path.join(config.home, 'internal_dest_dir/new-destination'));
     });
 
     it('should parse baseurl if no leading space', function() {
       handler.parseDestinationFromConfigData('baseurl:/new-destination\n');
       handler.buildDestination.should.equal(
-        path.join('dest_dir/new-destination'));
+        path.join(config.home, 'dest_dir/new-destination'));
     });
 
     it('should trim all spaces around baseurl', function() {
       handler.parseDestinationFromConfigData(
         'baseurl:   /new-destination   \n');
       handler.buildDestination.should.equal(
-        path.join('dest_dir/new-destination'));
+        path.join(config.home, 'dest_dir/new-destination'));
     });
 
     it('should fail if the baseurl contains relative components', function() {

@@ -225,6 +225,11 @@ illustrates each of the following settings:
 * **rsync**: path to `rsync` on the host machine
 * **rsyncOpts**: options to pass to `rsync` that control Jekyll-less builds;
   OS X installations in particular may need to adjust these
+* **s3 (optional)**: if present, will back up each generated site to
+  [Amazon S3](https://aws.amazon.com/s3/); attributes are:
+  * **awscli**: path to the [`aws` command](https://aws.amazon.com/cli/) on
+    the host machine
+  * **bucket**: address of the S3 bucket to which to sync generated sites
 * **payloadLimit**: maximum allowable size (in bytes) for incoming webhooks
 * **githubOrg**: GitHub organization to which all published repositories
   belong

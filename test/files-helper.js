@@ -10,133 +10,70 @@ module.exports = FilesHelper;
 function FilesHelper() {
 }
 
-FilesHelper.prototype.init = function(config) {
+FilesHelper.prototype.init = function() {
   var helper = this;
+
+  this.dirs = [];
+  this.files = [];
 
   return new Promise(function(resolve, reject) {
     temp.mkdir(scriptName + '-test-files-', function(err, tempDir) {
-      var testRepoDir = path.resolve(tempDir, 'site_builder_test'),
-          lockDir = path.resolve(tempDir, 'site_builder_test_lock_dir');
-
       if (err) {
         return reject(err);
       }
-
-      fs.mkdir(lockDir, '0700', function(err) {
-        if (err) {
-          return reject(err);
-        }
-        initHelper(helper, config, tempDir, testRepoDir, lockDir);
-        resolve();
-      });
+      helper.tempDir = tempDir;
+      resolve();
     });
   });
 };
 
-function initHelper(helper, config, tempDir, testRepoDir, lockDir) {
-  helper.dirs = {
-    testRepoDir: testRepoDir,
-    lockDir: lockDir,
-    tempDir: tempDir
-  };
-
-  helper.files = {
-    gemfile: path.resolve(testRepoDir, 'Gemfile'),
-    pagesConfig: path.resolve(testRepoDir, config.pagesConfig),
-    configYml: path.resolve(testRepoDir, '_config.yml'),
-    internalConfig: path.resolve(testRepoDir, '_config_internal.yml'),
-    externalConfig: path.resolve(testRepoDir, '_config_external.yml'),
-    lockfilePath: path.resolve(lockDir, '.update-lock-repo_name')
-  };
-
-  helper.filesToDelete = [];
-}
-
 FilesHelper.prototype.afterEach = function() {
-  var helper = this,
-      files = helper.filesToDelete.slice();
+  var helper = this;
 
-  helper.filesToDelete = [];
-  files = files.concat(Object.keys(helper.files).map(function(key) {
-    return helper.files[key];
-  }));
-
-  return removeItems(files, 'unlink')
+  return removeItems(this.tempDir, this.files, 'unlink')
     .then(function() {
-      return helper.removeDir(helper.dirs.testRepoDir);
+      return removeItems(helper.tempDir, helper.dirs.reverse(), 'rmdir');
     });
 };
 
 FilesHelper.prototype.after = function() {
-  return removeItems([this.dirs.lockDir, this.dirs.tempDir], 'rmdir');
+  return removeItems(this.tempDir, [''], 'rmdir');
 };
 
-FilesHelper.prototype.createRepoDir = function() {
+FilesHelper.prototype.createDir = function(dirName) {
   var helper = this;
 
   return new Promise(function(resolve, reject) {
-    fs.mkdir(helper.dirs.testRepoDir, '0700', function(err) {
+    fs.mkdir(path.join(helper.tempDir, dirName), '0700', function(err) {
       if (err) {
         return reject(err);
       }
-      fs.writeFile(helper.files.configYml, '', function(err) {
-        if (err) {
-          return reject(err);
-        }
-        resolve();
-      });
+      helper.dirs.push(dirName);
+      resolve();
     });
   });
 };
 
-FilesHelper.prototype.createRepoWithFiles = function(nameToContents) {
-  var helper = this,
-      writeFile;
-
-  this.filesToDelete = Object.keys(nameToContents);
-  writeFile = function(filename) {
-    return new Promise(function(resolve, reject) {
-      fs.writeFile(filename, nameToContents[filename], function(err) {
-        if (err) {
-          return reject(err);
-        }
-        resolve();
-      });
-    });
-  };
-
-  return this.createRepoDir()
-    .then(function() {
-      return Promise.all(helper.filesToDelete.map(writeFile));
-    });
-};
-
-FilesHelper.prototype.removeFile = function(filename) {
-  return removeItem(filename, 'unlink');
-};
-
-FilesHelper.prototype.removeDir = function(dirname) {
-  return removeItem(dirname, 'rmdir');
-};
-
-function removeItems(items, operation) {
+function removeItems(parentDir, items, operation) {
   var remover;
 
   remover = function(result, item) {
     return result.then(function() {
-      return removeItem(item, operation);
+      return removeItem(parentDir, item, operation);
     });
   };
   return items.reduce(remover, Promise.resolve());
 }
 
-function removeItem(name, operation) {
+function removeItem(parentDir, name, operation) {
+  var itemPath = path.join(parentDir, name);
+
   return new Promise(function(resolve, reject) {
-    fs.exists(name, function(exists) {
+    fs.exists(itemPath, function(exists) {
       if (!exists) {
         return resolve();
       }
-      fs[operation](name, function(err) {
+      fs[operation](itemPath, function(err) {
         if (err) {
           return reject(err);
         }
