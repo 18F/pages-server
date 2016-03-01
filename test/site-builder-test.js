@@ -282,6 +282,26 @@ describe('SiteBuilder', function() {
       expect(webhook.on.args[1][1]).to.be.handler;
     });
 
+    it('should match the branch exactly, not just a prefix', function() {
+      var handler = SiteBuilder.makeBuilderListener(webhook, builderConfig),
+          payload = JSON.parse(JSON.stringify(incomingPayload)),
+          builder;
+
+      payload.ref = 'refs/heads/18f-pages-internal';
+      captureLogs();
+      builder = handler(payload);
+
+      if (builder) {
+        return builder.then(function() {
+          return Promise.reject(new Error('the handler should not have ' +
+            'matched a longer branch name that contains the target branch ' +
+            'name as a prefix'));
+        })
+        .catch(restoreLogs);
+      }
+      return restoreLogs();
+    });
+
     it('should create a builder that builds the site', function() {
       var handler = SiteBuilder.makeBuilderListener(webhook, builderConfig);
 
