@@ -88,7 +88,7 @@ describe('GitRunner', function() {
             [ 'clone', 'git@github.com:18F/repo_name.git',
               '--branch', '18f-pages'
             ],
-            { cwd: opts.repoDir, stdio: 'inherit' },
+            { cwd: opts.repoDir },
             'failed to clone'
           ]
         ]);

@@ -38,6 +38,15 @@ describe('CommandRunner', function() {
       });
   });
 
+  it('should log and ignore the stdio option', function() {
+    return runner.run('node', [TEST_COMMAND, 'foobar'], { stdio: 'inherit' })
+      .should.be.fulfilled.then(function() {
+        fakeLogger.log.args.should.eql([['foobar']]);
+        fakeLogger.error.args.should.eql(
+          [['CommandRunner ignoring stdio option value: inherit']]);
+      });
+  });
+
   it('should log a proper error if the command fails to spawn', function() {
     return runner.run('bogus-node', ['nonexistent', 'test'])
       .should.be.rejectedWith('Error: rebuild failed for pages-server due ' +
