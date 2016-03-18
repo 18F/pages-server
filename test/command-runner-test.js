@@ -1,11 +1,12 @@
 'use strict';
 
 var CommandRunner = require('../lib/command-runner');
+var path = require('path');
 var sinon = require('sinon');
 var chai = require('chai');
 var chaiAsPromised = require('chai-as-promised');
 
-var TEST_COMMAND = 'fake-command.js';
+var TEST_COMMAND = path.join(__dirname, 'fake-command.js');
 
 chai.should();
 chai.use(chaiAsPromised);
