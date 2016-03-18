@@ -36,4 +36,14 @@ describe('CommandRunner', function() {
           [['no arguments passed on the command line']]);
       });
   });
+
+  it('should log a proper error if the command fails to spawn', function() {
+    return runner.run('bogus-node', ['nonexistent', 'test'])
+      .should.be.rejectedWith('Error: rebuild failed for pages-server due ' +
+        'to failed command: bogus-node nonexistent test: ')
+      .then(function() {
+        sinon.assert.notCalled(fakeLogger.log);
+        sinon.assert.notCalled(fakeLogger.error);
+      });
+  });
 });
