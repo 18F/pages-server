@@ -247,9 +247,6 @@ describe('SiteBuilder', function() {
       return filesHelper.createDir('repo_dir')
         .then(function() {
           return filesHelper.createDir('dest_dir');
-        })
-        .then(function() {
-          return filesHelper.createDir(path.join('dest_dir', 'foo'));
         });
     });
 
@@ -305,6 +302,8 @@ describe('SiteBuilder', function() {
     it('should create a builder that builds the site', function() {
       var handler = SiteBuilder.makeBuilderListener(webhook, builderConfig);
 
+      // Ensure the output dir gets cleaned up.
+      filesHelper.dirs.push(path.join('dest_dir', 'foo'));
       mySpawn.setDefault(mySpawn.simple(0));
       captureLogs();
       return handler(incomingPayload).should.be.fulfilled
@@ -333,12 +332,28 @@ describe('SiteBuilder', function() {
         .then(restoreLogs, restoreLogs);
     });
 
+    it('should build the site when the dest dir already exists', function() {
+      var handler = SiteBuilder.makeBuilderListener(webhook, builderConfig);
+
+      mySpawn.setDefault(mySpawn.simple(0));
+      captureLogs();
+      return filesHelper.createDir(path.join('dest_dir', 'foo'))
+        .then(function() {
+          return handler(incomingPayload).should.be.fulfilled;
+        })
+        .then(restoreLogs, restoreLogs);
+    });
+
     it('should create a builder that fails to build the site', function() {
       var handler = SiteBuilder.makeBuilderListener(webhook, builderConfig),
           errMsg = 'Error: failed to clone foo ' +
             'with exit code 1 from command: ' +
             'git clone git@github.com:18F/foo.git --branch 18f-pages';
 
+      // Ensure the output dir gets cleaned up. Though cloning the repo will
+      // fail, the builder will still create the output directory so that the
+      // build.log file will still be accessible to diagnose the error.
+      filesHelper.dirs.push(path.join('dest_dir', 'foo'));
       mySpawn.setDefault(mySpawn.simple(1));
       captureLogs();
       return handler(incomingPayload).should.be.rejectedWith(errMsg)
