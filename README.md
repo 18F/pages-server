@@ -439,7 +439,7 @@ server {
 7. Create a new Pull Request
 
 Feel free to [file an issue](https://github.com/18F/pages-server/issues) or to
-ping [@mbland](https://github.com/mbland) with any questions you may have,
+ping @ertzeid, @jbarnicle, or @mtorres253 with any questions you may have,
 especially if the current documentation should've addressed your needs, but
 didn't.
 
